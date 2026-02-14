@@ -99,6 +99,13 @@
         .photo-thumbnail.show {
             display: block;
         }
+        
+        /* Comment Button Active Style (optional) */
+        .comment-btn.has-comment {
+            color: #10b981;
+            border-color: #10b981;
+            background-color: rgba(16, 185, 129, 0.1);
+        }
 
         /* Network Status Indicator - UPDATED: Under icons */
         .network-status {
@@ -142,7 +149,9 @@
             border-bottom: 1px solid #eee;
             color: #1e293b; /* Force dark text for readability on white bg */
         }
-        /* No dark mode override for table to keep it "paper-like" */
+        .dark .preview-table td, .dark .preview-table th {
+            border-color: #444;
+        }
     </style>
 </head>
 <body class="bg-slate-50 font-sans">
@@ -192,9 +201,15 @@
             </select>
         </div>
 
-        <nav class="flex justify-center items-center mb-6 card p-2 rounded-xl shadow-sm">
-            <button id="startShiftBtn" class="nav-button active w-1/2 text-center py-2 px-4 rounded-lg font-semibold border border-gray-300 dark:border-slate-600 focus:outline-none transition-all duration-300">Початок зміни</button>
-            <button id="endShiftBtn" class="nav-button w-1/2 text-center py-2 px-4 rounded-lg font-semibold border border-gray-300 dark:border-slate-600 focus:outline-none transition-all duration-300">Кінець зміни</button>
+        <nav class="flex justify-center items-center mb-6 card p-2 rounded-xl shadow-sm gap-2">
+            <button id="startShiftBtn" class="nav-button active w-1/2 text-center py-2 px-2 rounded-lg font-semibold border border-gray-300 dark:border-slate-600 focus:outline-none transition-all duration-300 flex flex-col items-center justify-center">
+                <span class="leading-tight">Початок зміни</span>
+                <span class="text-[10px] font-normal opacity-80">(чек лист заповнити до 9:00)</span>
+            </button>
+            <button id="endShiftBtn" class="nav-button w-1/2 text-center py-2 px-2 rounded-lg font-semibold border border-gray-300 dark:border-slate-600 focus:outline-none transition-all duration-300 flex flex-col items-center justify-center">
+                <span class="leading-tight">Кінець зміни</span>
+                <span class="text-[10px] font-normal opacity-80">(чек лист заповнити до 20:00)</span>
+            </button>
         </nav>
 
         <main id="checklistContainer">
@@ -228,7 +243,7 @@
 
     <script>
         // --- CONFIGURATION ---
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxVXsYJD6gulynNWSA2f4z9zY-nTPd80BYttqSBhr6gG9D1YeDCjcUfR90osxQshYs89A/exec'; 
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxwckuTmIpd_nsm1qPAof2DC7vKAWBmHCt0P5bqV7AyvLaLwWShoAextiQyJKixPSd6kw/exec'; 
         
         // Checklist Structure Configuration
         const checklistConfig = [
@@ -411,8 +426,7 @@
                 const headerDiv = document.createElement('div');
                 headerDiv.className = 'card p-4 sm:p-6 rounded-2xl shadow-md mb-4';
                 headerDiv.innerHTML = `
-                    <div class="flex justify-between items-center mb-4">
-                         <h2 class="text-xl sm:text-2xl font-bold text-emerald-800">${isStart ? 'Перевірка (Початок)' : 'Перевірка (Кінець)'}</h2>
+                    <div class="flex justify-end items-center mb-4">
                          <button id="reset${isStart ? 'Start' : 'End'}" class="px-3 py-1 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-md">Очистити</button>
                     </div>
                     <div id="groupsContainer" class="space-y-4"></div>
@@ -480,8 +494,8 @@
                                 <div class="flex justify-between items-start">
                                     <span class="task-text font-medium text-lg leading-tight flex-1 mr-2">${item.text}</span>
                                     <div class="flex items-center gap-1 photo-controls">
-                                        <button class="comment-btn p-1 rounded-full hover:bg-gray-200 dark:hover:bg-slate-600 flex-shrink-0" title="Додати коментар">
-                                            <svg class="h-5 w-5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                                        <button class="comment-btn p-2 rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors h-10 w-10 flex items-center justify-center flex-shrink-0" title="Додати коментар">
+                                            <svg class="h-6 w-6 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
                                         </button>
                                     </div>
                                 </div>
@@ -659,6 +673,12 @@
                         const newComment = commentTextarea.value.trim();
                         commentEl.textContent = newComment;
                         commentEl.classList.toggle('hidden', !newComment);
+                        
+                        // Style comment btn
+                        const cBtn = currentCommentItem.querySelector('.comment-btn');
+                        if(newComment) cBtn.classList.add('has-comment');
+                        else cBtn.classList.remove('has-comment');
+
                         saveState();
                     }
                     commentModal.style.display = 'none';
@@ -731,6 +751,7 @@
                             const cEl = el.querySelector('.comment-text');
                             cEl.textContent = data.comment;
                             cEl.classList.remove('hidden');
+                            el.querySelector('.comment-btn').classList.add('has-comment');
                         }
                     }
                 });
@@ -756,6 +777,7 @@
                     item.querySelector('.comment-text').textContent = '';
                     item.querySelector('.comment-text').classList.add('hidden');
                     item.querySelector('.print-value').textContent = '';
+                    item.querySelector('.comment-btn').classList.remove('has-comment');
                     
                     const thumb = item.querySelector('.photo-thumbnail');
                     if(thumb) { thumb.src = ''; thumb.classList.add('hidden'); }
