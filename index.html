@@ -15,25 +15,25 @@
     <style>
         /* Base Variables for Theming */
         :root {
-            --bg-color: #f8fafc; /* slate-50 */
+            --bg-color: #f8fafc;
             --card-bg-color: #ffffff;
-            --text-color: #1e293b; /* slate-800 */
-            --text-muted-color: #64748b; /* slate-500 */
-            --item-bg-color: #f1f5f9; /* slate-100 */
-            --item-hover-bg-color: #e2e8f0; /* slate-200 */
+            --text-color: #1e293b;
+            --text-muted-color: #64748b;
+            --item-bg-color: #f1f5f9;
+            --item-hover-bg-color: #e2e8f0;
             --border-color: #e2e8f0;
-            --active-btn-bg: #10b981; /* emerald-500 */
+            --active-btn-bg: #10b981;
             --active-btn-text: #ffffff;
-            --error-btn-bg: #ef4444; /* red-500 */
+            --error-btn-bg: #ef4444;
         }
 
         .dark {
-            --bg-color: #1e293b; /* slate-800 */
-            --card-bg-color: #334155; /* slate-700 */
-            --text-color: #f1f5f9; /* slate-100 */
-            --text-muted-color: #94a3b8; /* slate-400 */
-            --item-bg-color: #475569; /* slate-600 */
-            --item-hover-bg-color: #64748b; /* slate-500 */
+            --bg-color: #1e293b;
+            --card-bg-color: #334155;
+            --text-color: #f1f5f9;
+            --text-muted-color: #94a3b8;
+            --item-bg-color: #475569;
+            --item-hover-bg-color: #64748b;
             --border-color: #475569;
         }
 
@@ -96,7 +96,7 @@
 
         /* Photo Styles */
         .photo-btn.has-photo {
-            color: #10b981; /* green */
+            color: #10b981;
             border-color: #10b981;
             background-color: rgba(16, 185, 129, 0.1);
         }
@@ -108,9 +108,7 @@
             border: 1px solid var(--border-color);
             display: none;
         }
-        .photo-thumbnail.show {
-            display: block;
-        }
+        .photo-thumbnail.show { display: block; }
         
         /* Comment Button Active Style */
         .comment-btn.has-comment {
@@ -146,11 +144,7 @@
                 display: none !important;
             }
             .print-value { display: block !important; }
-            main, section, .card {
-                display: block !important;
-                box-shadow: none !important;
-                border: none !important;
-            }
+            main, section, .card { display: block !important; box-shadow: none !important; border: none !important; }
         }
         .print-value { display: none; font-weight: bold; }
         
@@ -161,9 +155,7 @@
             border-bottom: 1px solid #eee;
             color: #1e293b;
         }
-        .dark .preview-table td, .dark .preview-table th {
-            border-color: #444;
-        }
+        .dark .preview-table td, .dark .preview-table th { border-color: #444; }
         
         /* Error Highlight Styles */
         @keyframes errorPulse {
@@ -176,9 +168,7 @@
             background-color: #fef2f2 !important;
             transition: background-color 0.3s ease;
         }
-        .dark .error-highlight {
-            background-color: rgba(239, 68, 68, 0.15) !important;
-        }
+        .dark .error-highlight { background-color: rgba(239, 68, 68, 0.15) !important; }
     </style>
 </head>
 <body class="bg-slate-50 font-sans">
@@ -204,7 +194,6 @@
     </script>
 
     <div class="container mx-auto max-w-3xl p-4 sm:p-6 lg:p-8 relative">
-        
         <header class="relative text-center mb-6">
              <div class="absolute top-0 left-0 text-center">
                 <button onclick="location.reload()" class="inline-block p-2 rounded-full text-muted header-icon transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" title="Оновити сторінку">
@@ -304,14 +293,10 @@
                 items: [
                     { id: '1-1', text: 'Температура компресорів', type: 'dual_input', labels: ['№1', '№2'], unit: '°C', visibleOn: 'all' },
                     { id: '1-2', text: 'Проконтролювати відсутність помилок на пультах керування компресорів.', type: 'binary', options: ['Відсутні', 'Є'], visibleOn: 'all' },
-                    
-                    // Start Specific
                     { id: '1-3', text: 'Вимкнути систему нічного обігріву приміщення.', type: 'binary', options: ['Вимкнено', 'Увімкнено'], visibleOn: 'start' },
                     { id: '1-4', text: 'Відкрити заслінки припливно-витяжної вентиляції.', type: 'binary', options: ['Відкрито', 'Закрито'], visibleOn: 'start' },
-                    
-                    // End Specific
                     { id: '1-3-end', text: 'Увімкнути систему нічного обігріву (якщо потрібно).', type: 'binary', options: ['Увімкнено', 'Не потр.'], visibleOn: 'end' },
-                    { id: '1-4-end', text: 'Закрити заслінки вентиляції.', type: 'binary', options: ['Закрито', 'Відкрито'], visibleOn: 'end' },
+                    { id: '1-4-end', text: 'Закрити заслінки вентиляції.', type: 'binary', options: ['Закрито', 'Відкрито'], visibleOn: 'end' }
                 ]
             },
             {
@@ -319,4 +304,910 @@
                 title: '2. Свердловини №1 (ближня) та №2 (дальня)',
                 items: [
                     { id: '2-1', text: 'Перевірити табло клапана тиску на наявність помилок.', type: 'binary', options: ['Немає', 'Є'], visibleOn: 'all' },
-                    { id: '2-2', text: 'З
+                    { id: '2-2', text: 'Здійснити візуальний огляд цілісності трубопроводів.', type: 'binary', options: ['Цілі', 'Пошкоджені'], visibleOn: 'all' },
+                    { id: '2-3', text: 'Проконтролювати роботу насосів (відсутність стороннього шуму та вібрації).', type: 'binary', options: ['Норма', 'Шум/Вібрація'], visibleOn: 'all' }
+                ]
+            },
+            {
+                id: 'generator',
+                title: '3. Генератор',
+                items: [
+                    { id: '3-1', text: 'Провести зовнішній візуальний огляд генератора.', type: 'binary', options: ['Оглянуто', 'Зауваження'], visibleOn: 'all' },
+                    { id: '3-2', text: 'Переконатися у відсутності сторонніх шумів під час роботи.', type: 'binary', options: ['Норма', 'Сторонній шум', 'Генератор не запущений'], visibleOn: 'all' },
+                    { id: '3-3', text: 'Перевірити рівень вібрації корпусу та вузлів.', type: 'binary', options: ['Норма', 'Вібрація', 'Генератор не запущений'], visibleOn: 'all' },
+                    { id: '3-4', text: 'Зробити фото інформаційного табло генератора.', type: 'input', unit: 'Внести номер помилки', photoRequired: true, visibleOn: 'all' }
+                ]
+            },
+            {
+                id: 'boiler',
+                title: '4. Котельні №1 та №2',
+                items: [
+                    { id: '4-1', text: 'Зняти показники манометрів тиску пари.', type: 'dual_input', labels: ['№1', '№2'], unit: 'бар', visibleOn: 'all' },
+                    { id: '4-2', text: 'Проконтролювати коректність роботи водяних насосів.', type: 'binary', options: ['Коректно', 'Збій'], visibleOn: 'all' },
+                    { id: '4-3', text: 'Перевірити рівень води в ємності забору води.', type: 'binary', options: ['Норма', 'Низький'], visibleOn: 'all' },
+                    { id: '4-4', text: 'Здійснити візуальний контроль рівнемірів та оглядового скла (вода, пара).', type: 'binary', options: ['Видно', 'Не видно'], visibleOn: 'all' },
+                    { id: '4-5', text: 'Перевірити роботу димососа та вентиляторів топки.', type: 'binary', options: ['Справні', 'Несправні'], visibleOn: 'all' },
+                    { id: '4-6', text: 'Перевірити герметичність паропроводів, засувок та вентилів.', type: 'binary', options: ['Герметично', 'Пропуск'], visibleOn: 'all' },
+                    { id: '4-7', text: 'Провести огляд щита керування котельнею.', type: 'binary', options: ['Оглянуто', 'Зауваження'], visibleOn: 'all' }
+                ]
+            },
+            {
+                id: 'fridge',
+                title: '5. Холодильний контейнер',
+                items: [
+                    { id: '5-1', text: 'Зіставити поточну температуру всередині з установленим режимом.', type: 'input', unit: '°C', visibleOn: 'all' },
+                    { id: '5-2', text: 'Перевірити контролер на наявність аварійних кодів або помилок.', type: 'binary', options: ['Немає', 'Є'], visibleOn: 'all' },
+                    { id: '5-3', text: 'Оглянути ущільнювачі дверей на цілісність та відсутність обмерзання.', type: 'binary', options: ['Цілі', 'Пошкоджені'], visibleOn: 'all' },
+                    { id: '5-4', text: 'Проконтролювати роботу вентиляторів (відсутність звуків/вібрацій).', type: 'binary', options: ['Норма', 'Шум'], visibleOn: 'all' },
+                    { id: '5-5', text: 'Перевірити справність конденсатовідвідника.', type: 'binary', options: ['Норма', 'Забито'], visibleOn: 'all' }
+                ]
+            },
+            {
+                id: 'production',
+                title: '6. Виробничі зони',
+                items: [
+                    { id: '6-1', text: 'Перевірити справність робочого освітлення на всіх дільницях.', type: 'binary', options: ['Справне', 'Несправне'], visibleOn: 'all' },
+                    { id: '6-2', text: 'Оглянути стан парового та водяного трубопроводів на виробничій дільниці', type: 'binary', options: ['Норма', 'Витік'], visibleOn: 'all' },
+                    { id: '6-3', text: 'Увімкнути загальну систему вентиляції.', type: 'binary', options: ['Увімкнено', 'Вимкнено'], visibleOn: 'start' },
+                    { id: '6-4', text: 'Увімкнути подачу тиску на ресивери.', type: 'binary', options: ['Увімкнено', 'Вимкнено'], visibleOn: 'start' },
+                    { id: '6-3-end', text: 'Вимкнути загальну вентиляцію (якщо зміна закінчена).', type: 'binary', options: ['Вимкнено', 'Працює'], visibleOn: 'end' },
+                    { id: '6-4-end', text: 'Вимкнути подачу тиску на ресивери.', type: 'binary', options: ['Закрито', 'Відкрито'], visibleOn: 'end' },
+                    { id: '6-5', text: 'Оглянути осушувач повітря на справність.', type: 'binary', options: ['Справний', 'Несправний'], visibleOn: 'all' }
+                ]
+            },
+            {
+                id: 'hvo',
+                title: '7. ХВО (Хімічне водоочищення)',
+                items: [
+                    { id: '7-1', text: 'Тиск води (вхід/вихід)', type: 'dual_input', labels: ['Вхід', 'Вихід'], unit: 'бар', visibleOn: 'all' },
+                    { id: '7-2', text: 'Проконтролювати робочий тиск повітря і зробити фото панелі з ротаметром.', type: 'input', unit: 'бар', photoLabel: 'Фото', photoRequired: true, visibleOn: 'all' },
+                    { id: '7-3', text: 'Переконатися у відсутності помилок процесу регенерації.', type: 'binary', options: ['Немає', 'Є помилка'], visibleOn: 'all' },
+                    { id: '7-4', text: 'Перевірити рівень солі та води в ємностях.', type: 'binary', options: ['Норма', 'Низький'], visibleOn: 'all' },
+                    { id: '7-5', text: 'Оглянути всі вузли системи (цілісність).', type: 'binary', options: ['Цілі', 'Пошкоджені'], visibleOn: 'all' },
+                    { id: '7-6', text: 'Перевірити щит керування (час, автомати, напруга).', type: 'binary', options: ['Норма', 'Збій'], visibleOn: 'all' },
+                    { id: '7-7', text: 'Проконтролювати роботу підвищувальних насосів.', type: 'binary', options: ['Норма', 'Збій'], visibleOn: 'all' },
+                    { id: '7-8', text: 'UF знезараження H2O: Насос працює?', type: 'binary', options: ['Так', 'Ні'], visibleOn: 'all' },
+                    { id: '7-9', text: 'UF знезараження H2O: UF лампа світить?', type: 'binary', options: ['Так', 'Ні'], visibleOn: 'all' },
+                    { id: '7-10', text: 'UF знезараження H2O: Вода подається в ємності №1 і №2?', type: 'binary', options: ['Так', 'Ні'], visibleOn: 'all' }
+                ]
+            }
+        ];
+
+        // --- Custom Dialog System ---
+        const showCustomDialog = (message, isConfirm = false) => {
+            return new Promise((resolve) => {
+                const overlay = document.getElementById('customDialogOverlay');
+                const msgEl = document.getElementById('customDialogMessage');
+                const btnsEl = document.getElementById('customDialogButtons');
+
+                msgEl.textContent = message;
+                btnsEl.innerHTML = '';
+
+                const closeDialog = () => {
+                    overlay.classList.add('hidden');
+                    overlay.classList.remove('flex');
+                };
+
+                if (isConfirm) {
+                    const btnCancel = document.createElement('button');
+                    btnCancel.className = 'px-4 py-2 bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-white rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors';
+                    btnCancel.textContent = 'Скасувати';
+                    btnCancel.onclick = () => { closeDialog(); resolve(false); };
+
+                    const btnOk = document.createElement('button');
+                    btnOk.className = 'px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors shadow-md';
+                    btnOk.textContent = 'Підтвердити';
+                    btnOk.onclick = () => { closeDialog(); resolve(true); };
+
+                    btnsEl.appendChild(btnCancel);
+                    btnsEl.appendChild(btnOk);
+                } else {
+                    const btnOk = document.createElement('button');
+                    btnOk.className = 'px-6 py-2 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 transition-colors shadow-md';
+                    btnOk.textContent = 'Зрозуміло';
+                    btnOk.onclick = () => { closeDialog(); resolve(true); };
+                    btnsEl.appendChild(btnOk);
+                }
+
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+            });
+        };
+
+        const customAlert = (msg) => showCustomDialog(msg, false);
+        const customConfirm = (msg) => showCustomDialog(msg, true);
+
+        // --- Clock Update ---
+        const updateClock = () => {
+            const dateEl = document.getElementById('current-date');
+            if(dateEl) {
+                const now = new Date();
+                dateEl.textContent = now.toLocaleDateString('uk-UA') + ' ' + now.toLocaleTimeString('uk-UA', {hour: '2-digit', minute:'2-digit'});
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateClock();
+            setInterval(updateClock, 60000);
+
+            // Populate Modals HTML
+            document.getElementById('completionModal').innerHTML = `
+                <div class="card p-6 rounded-2xl shadow-xl w-full max-w-lg text-center modal-content max-h-[90vh] overflow-y-auto">
+                    <h3 id="modalMessage" class="text-xl font-bold mb-4">Попередній перегляд звіту</h3>
+                    <div id="previewContent" class="text-left mb-6 text-sm border rounded p-2 bg-white text-gray-900 max-h-60 overflow-y-auto">
+                    </div>
+                    <div class="flex flex-col gap-3">
+                        <button id="submitReportBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors">Підтвердити та Відправити</button>
+                        <button id="closeModalBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition-colors">Повернутися до редагування</button>
+                    </div>
+                    <div id="submitStatus" class="mt-2 text-sm hidden font-bold"></div>
+                </div>`;
+
+            document.getElementById('commentModal').innerHTML = `
+                <div class="card p-6 rounded-2xl shadow-xl max-w-sm w-full text-center modal-content">
+                    <h3 class="text-xl font-bold mb-4">Ваш коментар</h3>
+                    <textarea id="commentTextarea" class="w-full p-2 border rounded-lg card text-muted" rows="4"></textarea>
+                    <div class="mt-4 flex justify-end space-x-2">
+                         <button id="cancelCommentBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition-colors">Скасувати</button>
+                         <button id="saveCommentBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors">Зберегти</button>
+                    </div>
+                </div>`;
+
+            const contactsData = [
+                { name: 'Диндар Анастасія', phone: '066-313-31-75', tel: '+380663133175' },
+                { name: 'Бузницький Юрій', phone: '050-446-79-73', tel: '+380504467973' },
+                { name: 'Галагін Евгеній', phone: '066-217-48-25', tel: '+380662174825' },
+                { name: 'Матвеєва Олена', phone: '050-334-02-67', tel: '+380503340267' },
+            ];
+            
+            const contactsContainer = document.querySelector('.contact-list');
+            contactsData.forEach(contact => {
+                const contactEl = document.createElement('div');
+                contactEl.className = 'bg-gray-50 dark:bg-slate-600 p-4 rounded-lg flex items-center justify-between';
+                contactEl.innerHTML = `
+                    <div>
+                        <p class="font-bold">${contact.name}</p>
+                        <p class="text-muted">${contact.phone}</p>
+                    </div>
+                    <a href="tel:${contact.tel}" class="bg-green-500 hover:bg-green-600 dark:bg-orange-600 dark:hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                    </a>`;
+                contactsContainer.appendChild(contactEl);
+            });
+
+            const checklistContainer = document.getElementById('checklistContainer');
+            const employeeSelect = document.getElementById('employeeSelect');
+            const commentModal = document.getElementById('commentModal');
+            const commentTextarea = document.getElementById('commentTextarea');
+            const completionModal = document.getElementById('completionModal');
+            
+            let currentSection = 'start';
+            let currentPhotos = {}; 
+            let appState = {};
+            const STORAGE_KEY = 'shiftChecklistState_v3';
+            const OFFLINE_KEY = 'offlineReportsQueue';
+
+            const renderChecklist = (sectionId) => {
+                checklistContainer.innerHTML = '';
+                const isStart = sectionId === 'start';
+                
+                const contentWrapper = document.createElement('section');
+                contentWrapper.id = `${sectionId}ShiftSection`;
+                
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'card p-4 sm:p-6 rounded-2xl shadow-md mb-4';
+                headerDiv.innerHTML = `
+                    <div class="flex justify-end items-center mb-4">
+                         <button id="reset${isStart ? 'Start' : 'End'}" class="px-3 py-1 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-md">Очистити список</button>
+                    </div>
+                    <div id="groupsContainer" class="space-y-4"></div>
+                `;
+                contentWrapper.appendChild(headerDiv);
+                
+                const groupsContainer = headerDiv.querySelector('#groupsContainer');
+
+                checklistConfig.forEach(group => {
+                    const activeItems = group.items.filter(item => item.visibleOn === 'all' || item.visibleOn === sectionId);
+                    if (activeItems.length === 0) return;
+
+                    const groupDiv = document.createElement('div');
+                    groupDiv.innerHTML = `<h3 class="font-bold text-lg mb-2 text-emerald-700 dark:text-emerald-400">${group.title}</h3>`;
+                    
+                    const list = document.createElement('ul');
+                    list.className = 'space-y-3';
+
+                    activeItems.forEach(item => {
+                        const uniqueId = `${sectionId}-${item.id}`; 
+                        const li = document.createElement('li');
+                        li.id = uniqueId;
+                        li.className = 'checklist-item p-3 rounded-lg';
+                        li.dataset.type = item.type;
+                        
+                        const photoHtml = `
+                            <label class="cursor-pointer flex-shrink-0 ml-2">
+                                <input type="file" accept="image/*" capture="environment" class="hidden photo-input">
+                                <div class="photo-btn p-2 ${item.photoLabel ? 'px-3' : 'w-10'} rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors h-10 flex items-center justify-center" title="${item.photoLabel || 'Додати фото'}">
+                                    <svg class="h-6 w-6 text-muted ${item.photoLabel ? 'mr-1 sm:mr-2' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    ${item.photoLabel ? `<span class="text-xs sm:text-sm font-semibold text-slate-500 whitespace-nowrap hidden sm:inline-block">${item.photoLabel}</span><span class="text-xs font-semibold text-slate-500 sm:hidden">Фото</span>` : ''}
+                                </div>
+                            </label>
+                        `;
+
+                        let controlsHtml = '';
+                        if (item.type === 'binary') {
+                            const buttonsHtml = item.options.map((opt, index) => {
+                                let kind = 'good';
+                                if (item.options.length === 3) {
+                                    if (index === 1) kind = 'bad';
+                                    if (index === 2) kind = 'neutral';
+                                } else {
+                                    if (index === item.options.length - 1) kind = 'bad';
+                                }
+                                return `<button class="option-btn px-2 py-2 rounded text-sm font-medium flex-1 min-h-[40px]" data-val="${opt}" data-kind="${kind}">${opt}</button>`;
+                            }).join('');
+
+                            controlsHtml = `
+                                <div class="flex gap-2 mt-2 controls-area items-center flex-wrap sm:flex-nowrap">
+                                    ${buttonsHtml}
+                                    ${photoHtml}
+                                </div>
+                            `;
+                        } else if (item.type === 'input') {
+                            controlsHtml = `
+                                <div class="mt-2 flex items-center gap-2 controls-area">
+                                    <div class="relative flex-1">
+                                        <input type="text" class="p-2 rounded w-full text-center font-bold h-10 border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700" placeholder="---" data-input>
+                                        <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm font-bold text-muted whitespace-nowrap">${item.unit}</span>
+                                    </div>
+                                    ${photoHtml}
+                                </div>
+                            `;
+                        } else if (item.type === 'dual_input') {
+                            controlsHtml = `
+                                <div class="mt-2 flex items-center gap-2 controls-area">
+                                    <div class="flex flex-1 gap-2">
+                                        <div class="relative w-1/2">
+                                            <input type="text" class="p-2 rounded w-full text-center font-bold h-10 border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700" placeholder="${item.labels[0]}" data-input-1>
+                                        </div>
+                                        <div class="relative w-1/2">
+                                            <input type="text" class="p-2 rounded w-full text-center font-bold h-10 border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700" placeholder="${item.labels[1]}" data-input-2>
+                                        </div>
+                                    </div>
+                                    ${photoHtml}
+                                </div>
+                            `;
+                        }
+
+                        li.innerHTML = `
+                            <div class="w-full">
+                                <div class="flex justify-between items-start">
+                                    <span class="task-text font-medium text-lg leading-tight flex-1 mr-2">${item.text}</span>
+                                    <div class="flex items-center gap-1 photo-controls">
+                                        <button class="comment-btn p-2 rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors h-10 w-10 flex items-center justify-center flex-shrink-0" title="Додати коментар">
+                                            <svg class="h-6 w-6 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                ${controlsHtml}
+                                <div class="flex items-center gap-2 mt-1">
+                                    <div class="print-value text-emerald-600"></div>
+                                    <img src="" class="photo-thumbnail hidden">
+                                </div>
+                                <div class="comment-text mt-1 hidden w-full text-sm text-gray-500 italic"></div>
+                            </div>
+                        `;
+                        list.appendChild(li);
+                    });
+                    
+                    groupDiv.appendChild(list);
+                    groupsContainer.appendChild(groupDiv);
+                });
+
+                const submitDiv = document.createElement('div');
+                submitDiv.id = "mainSubmitSection";
+                submitDiv.className = "mt-6 mb-4";
+                submitDiv.innerHTML = `
+                    <button id="mainSubmitBtn" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg transition-transform transform active:scale-95 flex items-center justify-center text-lg">
+                        <svg class="w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Перевірити та відправити звіт
+                    </button>
+                `;
+                contentWrapper.appendChild(submitDiv);
+
+                checklistContainer.appendChild(contentWrapper);
+                
+                attachItemListeners();
+                document.getElementById(`reset${isStart ? 'Start' : 'End'}`).addEventListener('click', async () => {
+                    if(await customConfirm("Ви впевнені, що хочете очистити всі відповіді в цій секції?")) {
+                        clearSectionData(currentSection);
+                    }
+                });
+                document.getElementById('mainSubmitBtn').addEventListener('click', () => showCompletionModal(currentSection));
+            };
+
+            const handlePhotoUpload = (input, item, uniqueId) => {
+                if (!employeeSelect.value) { 
+                    customAlert("Спочатку оберіть механіка зі списку зверху!"); 
+                    input.value = ''; 
+                    return; 
+                }
+                
+                if (input.files && input.files[0]) {
+                    const file = input.files[0];
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        const img = new Image();
+                        img.onload = function() {
+                            const canvas = document.getElementById('compressionCanvas');
+                            const ctx = canvas.getContext('2d');
+                            const MAX_WIDTH = 800;
+                            let width = img.width;
+                            let height = img.height;
+                            
+                            if (width > MAX_WIDTH) {
+                                height *= MAX_WIDTH / width;
+                                width = MAX_WIDTH;
+                            }
+                            canvas.width = width;
+                            canvas.height = height;
+                            ctx.drawImage(img, 0, 0, width, height);
+                            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                            currentPhotos[uniqueId] = dataUrl;
+                            
+                            const thumb = item.querySelector('.photo-thumbnail');
+                            thumb.src = dataUrl;
+                            thumb.classList.remove('hidden');
+                            thumb.classList.add('show');
+                            item.querySelector('.photo-btn').classList.add('has-photo');
+                            item.classList.remove('error-highlight');
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const attachItemListeners = () => {
+                const items = document.querySelectorAll('.checklist-item');
+                items.forEach(item => {
+                    const id = item.id;
+                    const type = item.dataset.type;
+
+                    const photoInput = item.querySelector('.photo-input');
+                    if(photoInput) photoInput.addEventListener('change', () => handlePhotoUpload(photoInput, item, id));
+
+                    item.querySelector('.comment-btn').addEventListener('click', () => openCommentModal(item));
+
+                    if (type === 'binary') {
+                        const btns = item.querySelectorAll('.option-btn');
+                        btns.forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                if (!employeeSelect.value) { customAlert("Спочатку оберіть механіка!"); return; }
+                                btns.forEach(b => b.classList.remove('selected-good', 'selected-bad', 'selected-neutral'));
+                                if (btn.dataset.kind === 'good') btn.classList.add('selected-good');
+                                else if (btn.dataset.kind === 'bad') btn.classList.add('selected-bad');
+                                else btn.classList.add('selected-neutral');
+                                
+                                item.classList.add('completed');
+                                item.classList.remove('error-highlight');
+                                item.dataset.value = btn.dataset.val;
+                                item.querySelector('.print-value').textContent = `Обрано: ${btn.dataset.val}`;
+                                saveState();
+                                updateProgress();
+                            });
+                        });
+                    } else if (type === 'input') {
+                        const input = item.querySelector('input');
+                        input.addEventListener('input', () => {
+                             if (!employeeSelect.value) { input.blur(); customAlert("Спочатку оберіть механіка!"); return; }
+                             if(input.value.trim() !== '') {
+                                 item.classList.add('completed');
+                                 item.classList.remove('error-highlight');
+                                 item.dataset.value = input.value;
+                                 item.querySelector('.print-value').textContent = `Значення: ${input.value}`;
+                             } else {
+                                 item.classList.remove('completed');
+                                 delete item.dataset.value;
+                                 item.querySelector('.print-value').textContent = '';
+                             }
+                             saveState();
+                             updateProgress();
+                        });
+                    } else if (type === 'dual_input') {
+                        const input1 = item.querySelector('[data-input-1]');
+                        const input2 = item.querySelector('[data-input-2]');
+                        
+                        const handleDualChange = () => {
+                            if (!employeeSelect.value) { input1.blur(); input2.blur(); customAlert("Спочатку оберіть механіка!"); return; }
+                            const v1 = input1.value.trim();
+                            const v2 = input2.value.trim();
+                            
+                            if (v1 || v2) {
+                                item.classList.add('completed');
+                                item.classList.remove('error-highlight');
+                                const label1 = input1.placeholder;
+                                const label2 = input2.placeholder;
+                                const displayStr = `${label1}: ${v1 || '-'} / ${label2}: ${v2 || '-'}`;
+                                item.dataset.value = displayStr;
+                                item.querySelector('.print-value').textContent = displayStr;
+                            } else {
+                                item.classList.remove('completed');
+                                delete item.dataset.value;
+                                item.querySelector('.print-value').textContent = '';
+                            }
+                            saveState();
+                            updateProgress();
+                        };
+
+                        input1.addEventListener('input', handleDualChange);
+                        input2.addEventListener('input', handleDualChange);
+                    }
+                });
+            };
+
+            let currentCommentItem = null;
+            const openCommentModal = (item) => {
+                currentCommentItem = item;
+                commentTextarea.value = item.querySelector('.comment-text').textContent;
+                commentModal.style.display = 'flex';
+            };
+            
+            const saveCommentBtn = document.getElementById('saveCommentBtn');
+            if(saveCommentBtn) {
+                saveCommentBtn.addEventListener('click', () => {
+                    if (currentCommentItem) {
+                        const commentEl = currentCommentItem.querySelector('.comment-text');
+                        const newComment = commentTextarea.value.trim();
+                        commentEl.textContent = newComment;
+                        commentEl.classList.toggle('hidden', !newComment);
+                        
+                        const cBtn = currentCommentItem.querySelector('.comment-btn');
+                        if(newComment) cBtn.classList.add('has-comment');
+                        else cBtn.classList.remove('has-comment');
+
+                        saveState();
+                    }
+                    commentModal.style.display = 'none';
+                });
+            }
+
+            const cancelCommentBtn = document.getElementById('cancelCommentBtn');
+            if(cancelCommentBtn) {
+                cancelCommentBtn.addEventListener('click', () => commentModal.style.display = 'none');
+            }
+
+            const saveState = () => {
+                const state = {
+                    checklist: {},
+                    employee: employeeSelect.value,
+                    theme: document.body.classList.contains('dark') ? 'dark' : 'light'
+                };
+                document.querySelectorAll('.checklist-item').forEach(item => {
+                    state.checklist[item.id] = {
+                        completed: item.classList.contains('completed'),
+                        value: item.dataset.value || '',
+                        comment: item.querySelector('.comment-text').textContent
+                    };
+                });
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            };
+
+            const loadState = () => {
+                const savedState = localStorage.getItem(STORAGE_KEY);
+                if (savedState) {
+                    try {
+                        appState = JSON.parse(savedState);
+                        if (appState.employee) employeeSelect.value = appState.employee;
+                        if (appState.theme === 'dark') document.body.classList.add('dark');
+                    } catch(e) {
+                        console.error("Local storage read error", e);
+                    }
+                }
+            };
+            
+            const restoreDOMState = () => {
+                if(!appState.checklist) return;
+                Object.keys(appState.checklist).forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) {
+                        const data = appState.checklist[id];
+                        if (data.completed) el.classList.add('completed');
+                        if (data.value) {
+                            el.dataset.value = data.value;
+                            if(el.dataset.type === 'binary') {
+                                const btn = Array.from(el.querySelectorAll('.option-btn')).find(b => b.dataset.val === data.value);
+                                if(btn) {
+                                    if(btn.dataset.kind === 'good') btn.classList.add('selected-good');
+                                    else if(btn.dataset.kind === 'bad') btn.classList.add('selected-bad');
+                                    else btn.classList.add('selected-neutral');
+                                }
+                                el.querySelector('.print-value').textContent = `Обрано: ${data.value}`;
+                            } else if(el.dataset.type === 'input') {
+                                const inp = el.querySelector('input');
+                                if(inp) inp.value = data.value;
+                                el.querySelector('.print-value').textContent = `Значення: ${data.value}`;
+                            } else if (el.dataset.type === 'dual_input') {
+                                const parts = data.value.split(' / ');
+                                if(parts.length === 2) {
+                                    const v1 = parts[0].split(': ')[1];
+                                    const v2 = parts[1].split(': ')[1];
+                                    const i1 = el.querySelector('[data-input-1]');
+                                    const i2 = el.querySelector('[data-input-2]');
+                                    if(i1) i1.value = v1 === '-' ? '' : v1;
+                                    if(i2) i2.value = v2 === '-' ? '' : v2;
+                                }
+                                el.querySelector('.print-value').textContent = data.value;
+                            }
+                        }
+                        if (data.comment) {
+                            const cEl = el.querySelector('.comment-text');
+                            cEl.textContent = data.comment;
+                            cEl.classList.remove('hidden');
+                            el.querySelector('.comment-btn').classList.add('has-comment');
+                        }
+                    }
+                });
+                updateProgress();
+            };
+
+            const updateProgress = () => {
+                if(currentSection === 'contacts') return;
+                const items = document.querySelectorAll(`#${currentSection}ShiftSection .checklist-item`);
+                const completedCount = document.querySelectorAll(`#${currentSection}ShiftSection .checklist-item.completed`).length;
+                const total = items.length;
+                const percentage = total > 0 ? (completedCount / total) * 100 : 0;
+                
+                document.getElementById('currentProgressBar').style.width = `${percentage}%`;
+                document.getElementById('currentStatus').textContent = `Залишилось завдань: ${total - completedCount}`;
+            };
+
+            const clearSectionData = (sectionId) => {
+                const items = document.querySelectorAll(`#${sectionId}ShiftSection .checklist-item`);
+                items.forEach(item => {
+                    item.classList.remove('completed');
+                    delete item.dataset.value;
+                    item.querySelector('.comment-text').textContent = '';
+                    item.querySelector('.comment-text').classList.add('hidden');
+                    item.querySelector('.print-value').textContent = '';
+                    item.querySelector('.comment-btn').classList.remove('has-comment');
+                    
+                    const thumb = item.querySelector('.photo-thumbnail');
+                    if(thumb) { thumb.src = ''; thumb.classList.add('hidden'); }
+                    const pBtn = item.querySelector('.photo-btn');
+                    if(pBtn) pBtn.classList.remove('has-photo');
+                    
+                    const pInput = item.querySelector('.photo-input');
+                    if(pInput) pInput.value = '';
+                    
+                    delete currentPhotos[item.id];
+                    
+                    if(item.dataset.type === 'binary') {
+                        item.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected-good', 'selected-bad', 'selected-neutral'));
+                    } else if(item.dataset.type === 'input') {
+                        const i = item.querySelector('input');
+                        if(i) i.value = '';
+                    } else if(item.dataset.type === 'dual_input') {
+                        const i1 = item.querySelector('[data-input-1]');
+                        const i2 = item.querySelector('[data-input-2]');
+                        if(i1) i1.value = '';
+                        if(i2) i2.value = '';
+                    }
+                });
+                saveState();
+                updateProgress();
+            };
+
+            const updateNetworkStatus = () => {
+                const dot = document.getElementById('statusDot');
+                const text = document.getElementById('statusText');
+                const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+                
+                if (!navigator.onLine) {
+                    dot.className = 'status-dot offline';
+                    text.textContent = `Офлайн (${queue.length})`;
+                } else if (queue.length > 0) {
+                    dot.className = 'status-dot offline';
+                    text.textContent = `Черга (${queue.length})`;
+                } else {
+                    dot.className = 'status-dot online';
+                    text.textContent = 'Онлайн';
+                }
+            };
+
+            const saveReportOffline = (reportData) => {
+                const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+                queue.push(reportData);
+                localStorage.setItem(OFFLINE_KEY, JSON.stringify(queue));
+                updateNetworkStatus();
+            };
+
+            const processOfflineQueue = async () => {
+                const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+                if (queue.length === 0) return;
+
+                const statusDot = document.getElementById('statusDot');
+                statusDot.className = 'status-dot syncing';
+                document.getElementById('statusText').textContent = 'Синхронізація...';
+
+                const newQueue = [];
+                for (const report of queue) {
+                    try {
+                        await fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(report)
+                        });
+                    } catch (e) {
+                        console.error('Failed to sync report', e);
+                        newQueue.push(report);
+                    }
+                }
+
+                localStorage.setItem(OFFLINE_KEY, JSON.stringify(newQueue));
+                updateNetworkStatus();
+                
+                if (newQueue.length === 0) {
+                    customAlert('Всі офлайн звіти успішно відправлено!');
+                }
+            };
+
+            window.addEventListener('online', () => {
+                updateNetworkStatus();
+                processOfflineQueue();
+            });
+            window.addEventListener('offline', updateNetworkStatus);
+            document.getElementById('networkStatusBtn').addEventListener('click', processOfflineQueue);
+
+            const switchView = (view) => {
+                currentSection = view;
+                document.getElementById('contactsSection').classList.add('hidden');
+                document.getElementById('footerStatus').style.display = 'flex';
+                document.getElementById('startShiftBtn').classList.remove('active');
+                document.getElementById('endShiftBtn').classList.remove('active');
+
+                if (view === 'contacts') {
+                    checklistContainer.classList.add('hidden');
+                    document.getElementById('contactsSection').classList.remove('hidden');
+                    document.getElementById('footerStatus').style.display = 'none';
+                } else {
+                    checklistContainer.classList.remove('hidden');
+                    renderChecklist(view);
+                    restoreDOMState();
+                    if(view === 'start') document.getElementById('startShiftBtn').classList.add('active');
+                    else document.getElementById('endShiftBtn').classList.add('active');
+                    updateProgress();
+                }
+            };
+
+            const showCompletionModal = (section) => {
+                if (!employeeSelect.value) { customAlert("Спочатку оберіть механіка!"); return; }
+                const modal = document.getElementById('completionModal');
+                
+                const items = Array.from(document.querySelectorAll(`#${section}ShiftSection .checklist-item`));
+                let tableHtml = '<table class="preview-table w-full"><thead><tr><th>Питання</th><th>Статус / Відповідь</th></tr></thead><tbody>';
+                
+                let allCompleted = true;
+                let incompleteItems = [];
+
+                items.forEach(item => {
+                    const text = item.querySelector('.task-text').textContent;
+                    
+                    const uniqueId = item.id;
+                    const configId = uniqueId.replace(`${section}-`, '');
+                    let isPhotoRequired = false;
+                    checklistConfig.forEach(g => {
+                        const cfgItem = g.items.find(i => i.id === configId);
+                        if (cfgItem && cfgItem.photoRequired) isPhotoRequired = true;
+                    });
+
+                    const isFilled = item.classList.contains('completed');
+                    const hasPhoto = !!currentPhotos[uniqueId];
+                    
+                    let isItemValid = isFilled;
+                    if (isPhotoRequired && !hasPhoto) isItemValid = false;
+
+                    if (!isItemValid) {
+                        allCompleted = false;
+                        incompleteItems.push(text);
+                        item.classList.add('error-highlight');
+                    } else {
+                        item.classList.remove('error-highlight');
+                    }
+
+                    let valDisplay = item.dataset.value || '';
+                    if (!isFilled) valDisplay = '<span class="text-red-500 font-bold">Не заповнено</span>';
+                    else if (isPhotoRequired && !hasPhoto) valDisplay = `<span class="text-red-500 font-bold">${valDisplay} (Бракує фото)</span>`;
+                    
+                    const photoIcon = hasPhoto ? '📷' : '';
+                    tableHtml += `<tr><td class="${!isItemValid ? 'text-red-600 font-medium' : ''}">${text}</td><td>${valDisplay} ${photoIcon}</td></tr>`;
+                });
+                tableHtml += '</tbody></table>';
+                
+                document.getElementById('previewContent').innerHTML = tableHtml;
+                
+                const msgEl = document.getElementById('modalMessage');
+                if (allCompleted) {
+                    msgEl.innerHTML = 'Попередній перегляд звіту <span class="block text-sm text-green-600 font-normal mt-1">Всі пункти заповнено коректно!</span>';
+                } else {
+                    msgEl.innerHTML = 'Попередній перегляд звіту <span class="block text-sm text-red-600 font-bold mt-1">Увага! Є незаповнені пункти.</span>';
+                }
+
+                modal.style.display = 'flex';
+                
+                const btn = document.getElementById('submitReportBtn');
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                
+                if (allCompleted) {
+                    newBtn.textContent = 'Підтвердити та Відправити';
+                    newBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors w-full';
+                    newBtn.addEventListener('click', () => submitReport(section));
+                } else {
+                    newBtn.textContent = 'Заповнити пропущені пункти';
+                    newBtn.className = 'bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors animate-pulse w-full';
+                    newBtn.addEventListener('click', () => {
+                        modal.style.display = 'none';
+                        customAlert(`Ви пропустили ${incompleteItems.length} пунктів! Будь ласка, заповніть їх (вони підсвічені червоним та блимають).`);
+                        
+                        setTimeout(() => {
+                            const firstInvalid = document.querySelector('.error-highlight');
+                            if (firstInvalid) {
+                                firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }, 300);
+                    });
+                }
+            };
+
+            const submitReport = async (section) => {
+                if (GOOGLE_SCRIPT_URL.includes('ВСТАВТЕ')) { customAlert("Налаштуйте Google Script URL у коді."); return; }
+                
+                const btn = document.getElementById('submitReportBtn');
+                const status = document.getElementById('submitStatus');
+                btn.disabled = true;
+                btn.textContent = 'Відправка...';
+                status.classList.remove('hidden');
+                status.textContent = 'Обробка даних...';
+                status.className = 'mt-2 text-sm text-blue-600 font-bold';
+
+                const sectionTitle = (section === 'start') ? 'Початок зміни' : 'Кінець зміни';
+                const items = Array.from(document.querySelectorAll(`#${section}ShiftSection .checklist-item`));
+                const total = items.length;
+                const completed = items.filter(i => i.classList.contains('completed')).length;
+
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('uk-UA').replace(/\./g, '-');
+                const timeStr = now.toLocaleTimeString('uk-UA').replace(/:/g, '-');
+
+                const reportItems = items.map(item => {
+                    const uniqueId = item.id;
+                    const itemText = item.querySelector('.task-text').textContent.trim();
+                    const photoBase64 = currentPhotos[uniqueId] || null;
+                    const safeName = itemText.substring(0, 20).replace(/[^a-zа-я0-9]/gi, '_');
+                    const photoName = photoBase64 ? `${safeName}_${dateStr}_${timeStr}.jpg` : null;
+
+                    return {
+                        text: itemText,
+                        completed: item.classList.contains('completed'),
+                        value: item.dataset.value || 'Н/Д',
+                        comment: item.querySelector('.comment-text').textContent.trim(),
+                        photoData: photoBase64,
+                        photoName: photoName
+                    };
+                });
+
+                const reportData = {
+                    date: new Date().toLocaleString('uk-UA'),
+                    time: new Date().toLocaleTimeString('uk-UA'),
+                    mechanic: employeeSelect.value,
+                    shiftStage: sectionTitle,
+                    summary: `Виконано ${completed} з ${total}`,
+                    items: reportItems
+                };
+
+                if (!navigator.onLine) {
+                    saveReportOffline(reportData);
+                    clearSectionData(section);
+                    status.textContent = 'Збережено офлайн!';
+                    setTimeout(() => {
+                        document.getElementById('completionModal').style.display = 'none';
+                        btn.disabled = false;
+                        btn.textContent = 'Підтвердити та Відправити';
+                        status.classList.add('hidden');
+                        
+                        const mechanicName = employeeSelect.value.split(' ')[1] || employeeSelect.value;
+                        customAlert(`Відсутній інтернет. Звіт збережено локально!\n\n${mechanicName}, щиро дякуємо за ваш сумлінний труд! Бажаємо хорошого робочого дня! 🛠️`);
+                    }, 1000);
+                    return;
+                }
+
+                try {
+                    await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(reportData)
+                    });
+                    
+                    clearSectionData(section);
+
+                    status.textContent = '✅ Успішно! Звіт відправлено.';
+                    status.className = 'mt-2 text-sm text-green-600 font-bold';
+                    setTimeout(() => {
+                        document.getElementById('completionModal').style.display = 'none';
+                        btn.disabled = false;
+                        btn.textContent = 'Підтвердити та Відправити';
+                        status.classList.add('hidden');
+                        
+                        const mechanicName = employeeSelect.value.split(' ')[1] || employeeSelect.value;
+                        customAlert(`Звіт успішно відправлено!\n\n${mechanicName}, щиро дякуємо за ваш сумлінний труд! Бажаємо хорошого робочого дня! 🛠️`);
+                    }, 1000);
+                } catch (e) {
+                    console.error(e);
+                    saveReportOffline(reportData);
+                    clearSectionData(section);
+                    status.textContent = 'Збережено офлайн (помилка мережі).';
+                    setTimeout(() => {
+                        document.getElementById('completionModal').style.display = 'none';
+                        btn.disabled = false;
+                        btn.textContent = 'Підтвердити та Відправити';
+                        status.classList.add('hidden');
+                        
+                        const mechanicName = employeeSelect.value.split(' ')[1] || employeeSelect.value;
+                        customAlert(`Помилка мережі. Звіт збережено локально!\n\n${mechanicName}, щиро дякуємо за ваш сумлінний труд! Бажаємо хорошого робочого дня! 🛠️`);
+                    }, 1000);
+                }
+            };
+            
+            document.getElementById('footerStatus').addEventListener('click', () => {
+                if(currentSection !== 'contacts') showCompletionModal(currentSection);
+            });
+
+            // Init Employee List
+            if(employeeSelect) {
+                const employees = ["Свінцов Михайло", "Гора Андрій", "Заміна"];
+                employees.forEach(e => employeeSelect.add(new Option(e, e)));
+                employeeSelect.addEventListener('change', saveState);
+            }
+            
+            const themeToggleBtn = document.getElementById('themeToggle');
+            if(themeToggleBtn) {
+                themeToggleBtn.addEventListener('click', () => {
+                    document.body.classList.toggle('dark');
+                    saveState();
+                });
+            }
+            
+            const printBtn = document.getElementById('printBtn');
+            if(printBtn) {
+                printBtn.addEventListener('click', () => window.print());
+            }
+            
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            if(closeModalBtn) {
+                closeModalBtn.addEventListener('click', () => completionModal.style.display = 'none');
+            }
+            
+            const startShiftBtn = document.getElementById('startShiftBtn');
+            if(startShiftBtn) startShiftBtn.addEventListener('click', () => switchView('start'));
+            
+            const endShiftBtn = document.getElementById('endShiftBtn');
+            if(endShiftBtn) endShiftBtn.addEventListener('click', () => switchView('end'));
+            
+            const contactsBtnHeader = document.getElementById('contactsBtnHeader');
+            if(contactsBtnHeader) contactsBtnHeader.addEventListener('click', () => switchView('contacts'));
+
+            loadState();
+            updateNetworkStatus(); 
+            switchView('start');
+        });
+    </script>
+</body>
+</html>
