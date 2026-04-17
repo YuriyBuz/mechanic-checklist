@@ -282,8 +282,8 @@
     <canvas id="compressionCanvas" class="hidden"></canvas>
 
     <script>
-        // --- CONFIGURATION ---
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwrVfvWYrJ_gc8v-IZ9PPeqOQHCoFgpxB4E6I_H_HtOyIMhv52Q7llq2IJBrTAIcgi1NA/exec'; 
+        // --- УВАГА: ВСТАВ СЮДИ СВІЙ НОВИЙ URL ПІСЛЯ DEPLOY ---
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxWgqXQbxbFxH2kH09d0hqOa4HPHUhwWsHoWw4cniqfcU19OFlx-SdNAt4_yoYMB2l94A/exec'; 
         
         // Checklist Structure Configuration
         const checklistConfig = [
@@ -1093,13 +1093,25 @@
                     const safeName = itemText.substring(0, 20).replace(/[^a-zа-я0-9]/gi, '_');
                     const photoName = photoBase64 ? `${safeName}_${dateStr}_${timeStr}.jpg` : null;
 
+                    // ЗНАХОДИМО КАТЕГОРІЮ (ДЛЯ БЕКЕНДУ)
+                    const configId = uniqueId.replace(`${section}-`, '');
+                    let itemCategory = 'Інше';
+                    checklistConfig.forEach(g => {
+                        if (g.items.some(i => i.id === configId)) itemCategory = g.title;
+                    });
+
+                    // ПЕРЕВІРЯЄМО ЧИ ОБРАНА "ПОГАНА" ВІДПОВІДЬ (ДЛЯ БЕКЕНДУ)
+                    const isBad = item.querySelector('.selected-bad') !== null;
+
                     return {
                         text: itemText,
                         completed: item.classList.contains('completed'),
                         value: item.dataset.value || 'Н/Д',
                         comment: item.querySelector('.comment-text').textContent.trim(),
                         photoData: photoBase64,
-                        photoName: photoName
+                        photoName: photoName,
+                        category: itemCategory, // Нове поле
+                        isBad: isBad            // Нове поле
                     };
                 });
 
