@@ -268,8 +268,8 @@
         </div>
     </div>
 
-    <div id="completionModal" class="fixed inset-0 hidden items-center justify-center modal-overlay p-4"></div>
-    <div id="commentModal" class="fixed inset-0 hidden items-center justify-center modal-overlay p-4"></div>
+    <div id="completionModal" class="fixed inset-0 hidden items-center justify-center modal-overlay p-4 z-[1500]"></div>
+    <div id="commentModal" class="fixed inset-0 hidden items-center justify-center modal-overlay p-4 z-[1500]"></div>
     
     <div id="customDialogOverlay" class="fixed inset-0 hidden items-center justify-center modal-overlay z-[2000] p-4">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center transform transition-all">
@@ -283,7 +283,7 @@
 
     <script>
         // --- УВАГА: ВСТАВ СЮДИ СВІЙ НОВИЙ URL ПІСЛЯ DEPLOY ---
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwFdGcNd05Z-qHLu6DhVqySooPF0tETl88sUhj-1t7EGzDrcuhRmqcZ0dtVa_jl7HbWdA/exec'; 
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz3kY2lMZLsgI0r06f7gP1Zbdqiy_DPc-S_y15W2rQrerLrPVFdhwVEk2iZJwGyG-mYbQ/exec'; 
         
         // Checklist Structure Configuration
         const checklistConfig = [
@@ -315,7 +315,7 @@
                     { id: '3-1', text: 'Провести зовнішній візуальний огляд генератора.', type: 'binary', options: ['Оглянуто', 'Зауваження'], visibleOn: 'all' },
                     { id: '3-2', text: 'Переконатися у відсутності сторонніх шумів під час роботи.', type: 'binary', options: ['Норма', 'Сторонній шум', 'Генератор не запущений'], visibleOn: 'all' },
                     { id: '3-3', text: 'Перевірити рівень вібрації корпусу та вузлів.', type: 'binary', options: ['Норма', 'Вібрація', 'Генератор не запущений'], visibleOn: 'all' },
-                    { id: '3-4', text: 'Зробити фото інформаційного табло генератора.', type: 'input', unit: 'Внести номер помилки', photoRequired: true, visibleOn: 'all' }
+                    { id: '3-4', text: 'Зробити фото інформаційного табло генератора.', type: 'input', unit: 'Внести номер помилки/ОК', photoRequired: true, visibleOn: 'all' }
                 ]
             },
             {
@@ -336,7 +336,8 @@
                 title: '5. Холодильний контейнер',
                 items: [
                     { id: '5-1', text: 'Зіставити поточну температуру всередині з установленим режимом.', type: 'input', unit: '°C', visibleOn: 'all' },
-                    { id: '5-2', text: 'Перевірити контролер на наявність аварійних кодів або помилок.', type: 'binary', options: ['Немає', 'Є'], visibleOn: 'all' },
+                    // Оновлене питання (обов'язкове фото)
+                    { id: '5-2', text: 'Зробити фото інформаційного табло контролера.', type: 'input', unit: 'Внести номер помилки/ОК', photoRequired: true, visibleOn: 'all' },
                     { id: '5-3', text: 'Оглянути ущільнювачі дверей на цілісність та відсутність обмерзання.', type: 'binary', options: ['Цілі', 'Пошкоджені'], visibleOn: 'all' },
                     { id: '5-4', text: 'Проконтролювати роботу вентиляторів (відсутність звуків/вібрацій).', type: 'binary', options: ['Норма', 'Шум'], visibleOn: 'all' },
                     { id: '5-5', text: 'Перевірити справність конденсатовідвідника.', type: 'binary', options: ['Норма', 'Забито'], visibleOn: 'all' }
@@ -349,9 +350,37 @@
                     { id: '6-1', text: 'Перевірити справність робочого освітлення на всіх дільницях.', type: 'binary', options: ['Справне', 'Несправне'], visibleOn: 'all' },
                     { id: '6-2', text: 'Оглянути стан парового та водяного трубопроводів на виробничій дільниці', type: 'binary', options: ['Норма', 'Витік'], visibleOn: 'all' },
                     { id: '6-3', text: 'Увімкнути загальну систему вентиляції.', type: 'binary', options: ['Увімкнено', 'Вимкнено'], visibleOn: 'start' },
-                    { id: '6-4', text: 'Увімкнути подачу тиску на ресивери.', type: 'binary', options: ['Увімкнено', 'Вимкнено'], visibleOn: 'start' },
+                    // Змінений текст про тиск повітря (початок)
+                    { id: '6-4', text: 'Увімкнути подачу тиску повітря на ресивери.', type: 'binary', options: ['Увімкнено', 'Вимкнено'], visibleOn: 'start' },
                     { id: '6-3-end', text: 'Вимкнути загальну вентиляцію (якщо зміна закінчена).', type: 'binary', options: ['Вимкнено', 'Працює'], visibleOn: 'end' },
-                    { id: '6-4-end', text: 'Вимкнути подачу тиску на ресивери.', type: 'binary', options: ['Закрито', 'Відкрито'], visibleOn: 'end' },
+                    // Змінений текст про тиск повітря (кінець)
+                    { id: '6-4-end', text: 'Вимкнути подачу тиску повітря на ресивери.', type: 'binary', options: ['Закрито', 'Відкрито'], visibleOn: 'end' },
+                    // Нове питання з тултипом (кінець)
+                    { id: '6-6-end', text: 'Протерти термоголовку виробничого принтера.', type: 'binary', options: ['Протерто', 'Не протерто'], visibleOn: 'end', hasTooltip: true, 
+                      tooltipHtml: `
+                        <div class="text-left text-slate-800 dark:text-slate-200">
+                            <h4 class="font-bold text-lg mb-3 text-emerald-700 dark:text-emerald-400">🛠️ Очищення термоголовки принтера</h4>
+                            <p class="mb-3 text-sm"><strong>Матеріали:</strong> Ізопропіловий спирт, безворсова серветка (або ватна паличка).</p>
+                            <p class="font-bold text-sm mb-2">Порядок дій:</p>
+                            <ul class="text-sm space-y-2 mb-4 list-none pl-0">
+                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">🔌</span> <strong>Вимкніть живлення.</strong> Обов'язково знеструмте принтер перед обслуговуванням.</span></label></li>
+                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">🖨️</span> <strong>Звільніть доступ.</strong> Відкрийте кришку, підніміть механізм. Витягніть етикетки та ріббон.</span></label></li>
+                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">💧</span> <strong>Змочіть аплікатор.</strong> Нанесіть ізопропіловий спирт на серветку (без крапель).</span></label></li>
+                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">🧹</span> <strong>Протріть головку.</strong> Акуратно проведіть по темній лінії нагрівального елемента суворо В ОДНОМУ НАПРЯМКУ. Не тріть туди-сюди!</span></label></li>
+                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">⏳</span> <strong>Просушіть.</strong> Зачекайте 1-2 хвилини до повного випаровування спирту.</span></label></li>
+                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">✅</span> <strong>Зберіть принтер.</strong> Встановіть матеріали, закрийте до клацання.</span></label></li>
+                            </ul>
+                            <div class="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-3 rounded text-sm text-red-800 dark:text-red-200 shadow-sm">
+                                <p class="font-bold mb-2 flex items-center text-red-600 dark:text-red-400"><span class="mr-2 text-lg">🛑</span> КРИТИЧНІ ЗАБОРОНИ (Увага!)</p>
+                                <ul class="list-disc pl-5 space-y-1">
+                                    <li>Заборонено торкатися елемента голими пальцями.</li>
+                                    <li>Заборонено використовувати ножі та інші жорсткі предмети для бруду.</li>
+                                    <li>Заборонено використовувати воду, ацетон чи інші розчинники.</li>
+                                </ul>
+                            </div>
+                        </div>
+                      ` 
+                    },
                     { id: '6-5', text: 'Оглянути осушувач повітря на справність.', type: 'binary', options: ['Справний', 'Несправний'], visibleOn: 'all' }
                 ]
             },
@@ -374,13 +403,25 @@
         ];
 
         // --- Custom Dialog System ---
-        const showCustomDialog = (message, isConfirm = false) => {
+        const showCustomDialog = (options) => {
             return new Promise((resolve) => {
                 const overlay = document.getElementById('customDialogOverlay');
                 const msgEl = document.getElementById('customDialogMessage');
                 const btnsEl = document.getElementById('customDialogButtons');
 
-                msgEl.textContent = message;
+                let msg = typeof options === 'string' ? options : options.message;
+                let isConfirm = options.isConfirm || false;
+                let isHtml = options.html || false;
+                let okText = options.okText || (isConfirm ? 'Підтвердити' : 'Зрозуміло');
+
+                if (isHtml) {
+                    msgEl.innerHTML = msg;
+                    msgEl.classList.remove('whitespace-pre-wrap'); 
+                } else {
+                    msgEl.textContent = msg;
+                    msgEl.classList.add('whitespace-pre-wrap');
+                }
+                
                 btnsEl.innerHTML = '';
 
                 const closeDialog = () => {
@@ -396,7 +437,7 @@
 
                     const btnOk = document.createElement('button');
                     btnOk.className = 'px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors shadow-md';
-                    btnOk.textContent = 'Підтвердити';
+                    btnOk.textContent = okText;
                     btnOk.onclick = () => { closeDialog(); resolve(true); };
 
                     btnsEl.appendChild(btnCancel);
@@ -404,7 +445,7 @@
                 } else {
                     const btnOk = document.createElement('button');
                     btnOk.className = 'px-6 py-2 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 transition-colors shadow-md';
-                    btnOk.textContent = 'Зрозуміло';
+                    btnOk.textContent = okText;
                     btnOk.onclick = () => { closeDialog(); resolve(true); };
                     btnsEl.appendChild(btnOk);
                 }
@@ -414,8 +455,8 @@
             });
         };
 
-        const customAlert = (msg) => showCustomDialog(msg, false);
-        const customConfirm = (msg) => showCustomDialog(msg, true);
+        const customAlert = (msg) => showCustomDialog({ message: msg });
+        const customConfirm = (msg) => showCustomDialog({ message: msg, isConfirm: true });
 
         // --- Clock Update ---
         const updateClock = () => {
@@ -523,6 +564,15 @@
                         li.className = 'checklist-item p-3 rounded-lg';
                         li.dataset.type = item.type;
                         
+                        let tooltipHtml = '';
+                        if (item.hasTooltip) {
+                            tooltipHtml = `
+                                <button type="button" class="tooltip-btn ml-2 inline-flex items-center justify-center flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 border border-blue-300 hover:bg-blue-200 focus:outline-none transition-colors" data-tooltip-id="${item.id}" title="Як це робити?">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                </button>
+                            `;
+                        }
+
                         const photoHtml = `
                             <label class="cursor-pointer flex-shrink-0 ml-2">
                                 <input type="file" accept="image/*" capture="environment" class="hidden photo-input">
@@ -584,7 +634,10 @@
                         li.innerHTML = `
                             <div class="w-full">
                                 <div class="flex justify-between items-start">
-                                    <span class="task-text font-medium text-lg leading-tight flex-1 mr-2">${item.text}</span>
+                                    <div class="flex flex-1 items-center mr-2">
+                                        <span class="task-text font-medium text-lg leading-tight">${item.text}</span>
+                                        ${tooltipHtml}
+                                    </div>
                                     <div class="flex items-center gap-1 photo-controls">
                                         <button class="comment-btn p-2 rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors h-10 w-10 flex items-center justify-center flex-shrink-0" title="Додати коментар">
                                             <svg class="h-6 w-6 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
@@ -675,6 +728,33 @@
 
             const attachItemListeners = () => {
                 const items = document.querySelectorAll('.checklist-item');
+                
+                // Event listener for tooltip buttons
+                const tooltipBtns = document.querySelectorAll('.tooltip-btn');
+                tooltipBtns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation(); // Щоб не спрацьовували інші кліки на елементі
+                        const configId = btn.getAttribute('data-tooltip-id');
+                        let foundItem = null;
+                        checklistConfig.forEach(g => {
+                            const found = g.items.find(i => i.id === configId);
+                            if(found) foundItem = found;
+                        });
+
+                        if(foundItem) {
+                            if(foundItem.tooltipHtml) {
+                                showCustomDialog({
+                                    message: foundItem.tooltipHtml,
+                                    html: true,
+                                    okText: 'Очищення виконано / Підтвердити'
+                                });
+                            } else if(foundItem.tooltipText) {
+                                customAlert(foundItem.tooltipText);
+                            }
+                        }
+                    });
+                });
+
                 items.forEach(item => {
                     const id = item.id;
                     const type = item.dataset.type;
@@ -1054,7 +1134,7 @@
                     newBtn.className = 'bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors animate-pulse w-full';
                     newBtn.addEventListener('click', () => {
                         modal.style.display = 'none';
-                        customAlert(`Ви пропустили ${incompleteItems.length} пунктів! Будь ласка, заповніть їх (вони підсвічені червоним та блимають).`);
+                        customAlert(`Ви пропустили ${incompleteItems.length} пунктів (або не додали обов'язкове фото)! Будь ласка, заповніть їх (вони підсвічені червоним та блимають).`);
                         
                         setTimeout(() => {
                             const firstInvalid = document.querySelector('.error-highlight');
@@ -1110,8 +1190,8 @@
                         comment: item.querySelector('.comment-text').textContent.trim(),
                         photoData: photoBase64,
                         photoName: photoName,
-                        category: itemCategory, // Нове поле
-                        isBad: isBad            // Нове поле
+                        category: itemCategory,
+                        isBad: isBad
                     };
                 });
 
