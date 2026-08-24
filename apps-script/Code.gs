@@ -42,6 +42,8 @@ function doPost(e) {
 }
 
 function submitReport_(p) {
+  var dict0 = loadDictionaries_();
+  p = normalizeLegacyPayload_(p, dict0);          // ← сумісність зі старим клієнтом
   var problems = validatePayload_(p);
   if (problems.length) {
     logEvent('Техніка', 'submit.invalid', problems.join('; '), { report_id: p && p.report_id });
@@ -55,7 +57,7 @@ function submitReport_(p) {
     return { ok: true, duplicate: true, report_id: p.report_id };
   }
 
-  var dict = loadDictionaries_();
+  var dict = dict0;
   var user = resolveUser_(dict, p.user_id, p.user_name);
   var now = new Date();
   var bizDate = p.business_date || businessDate(now);
@@ -88,7 +90,7 @@ function submitReport_(p) {
 
     answers.push([
       p.report_id + '#' + (i + 1), p.report_id, bizDate, p.stage, p.role, user.user_id,
-      it.item_id, item ? item.text : '', i + 1,
+      it.item_id, item ? item.text : (it.legacy_text || ''), i + 1,
       it.value || '', num_(nums, 0), num_(nums, 1), num_(nums, 2),
       status, '', it.comment || '', ''
     ]);
@@ -123,6 +125,55 @@ function submitReport_(p) {
            { report_id: p.report_id, user_id: user.user_id, app_version: p.app_version });
 
   return { ok: true, report_id: p.report_id, counts: cnt, warnings: warnings };
+}
+
+/**
+ * Старий клієнт шле інший payload: без report_id, з items[].text замість item_id,
+ * з mechanic/shiftStage замість user_name/stage. Поки застосунок не оновлено,
+ * приймаємо обидва формати — інакше після розгортання нового бекенду звіти
+ * почали б відхилятися й губитися.
+ *
+ * Прибрати цю функцію можна тільки після того, як усі механіки перейдуть
+ * на оновлений клієнт.
+ */
+function normalizeLegacyPayload_(p, dict) {
+  if (!p || !p.items || !p.items.length) return p;
+  if (p.report_id && p.items[0].item_id) return p;        // вже новий формат
+
+  var role = p.role === 'Майстер' ? 'Майстер' : 'Механік';
+  var stage = p.stage || p.shiftStage || '';
+  var who = p.user_name || p.mechanic || '';
+  var bizDate = legacyDate_(p.date) || businessDate();
+
+  var items = p.items.map(function (it) {
+    var text = String(it.text || '').trim();
+    var value = String(it.value === undefined || it.value === null ? '' : it.value).trim();
+    if (value === 'Н/Д') value = '';
+    var itemId = dict.byText[role + '|' + text] || '';
+    var norm = normalizeValue_(dict.byId[itemId], itemId, value);
+    return {
+      item_id: itemId,
+      value: norm.text,
+      values: norm.nums,
+      comment: it.comment || '',
+      photoData: it.photoData || null,
+      legacy_text: text
+    };
+  });
+
+  logEvent('Техніка', 'payload.legacy', 'старий формат від «' + who + '», пунктів ' + items.length,
+           { user_id: dict.byName[who] || 'U-000' });
+
+  return {
+    report_id: makeReportId(bizDate, role, stage, nowIsoUtc() + '|' + who + '|' + stage),
+    business_date: bizDate,
+    stage: stage,
+    role: role,
+    user_name: who,
+    config_version: 'legacy-client',
+    app_version: 'legacy',
+    items: items
+  };
 }
 
 function validatePayload_(p) {
