@@ -106,3 +106,57 @@ function preflight() {
   Logger.log(msg);
   return msg;
 }
+
+
+/**
+ * Перевірка доступу до папки фото. Створює тимчасовий файл і одразу видаляє.
+ *
+ * Скрипт виконується від імені власника деплойменту, а не власника таблиці.
+ * Якщо це різні акаунти — саме тут виявиться, що прав на папку немає.
+ * Схоже, це і є причина 130 втрачених фото у старій системі:
+ * помилка була «У доступі відмовлено: DriveApp».
+ */
+function checkPhotoFolder() {
+  var out = [];
+  out.push('Скрипт виконується від імені: ' + Session.getEffectiveUser().getEmail());
+  out.push('Активний користувач:          ' + Session.getActiveUser().getEmail());
+
+  var id = PropertiesService.getScriptProperties().getProperty('PHOTO_FOLDER_ID');
+  if (!id) {
+    out.push('❌ PHOTO_FOLDER_ID не заданий');
+    Logger.log(out.join('\n'));
+    return out.join('\n');
+  }
+  out.push('PHOTO_FOLDER_ID: ' + id);
+
+  var folder;
+  try {
+    folder = DriveApp.getFolderById(id);
+    out.push('✅ Папку знайдено: «' + folder.getName() + '»');
+  } catch (e) {
+    out.push('❌ Папка НЕдоступна: ' + e);
+    out.push('   → усі фото зберігатимуться з помилкою, як і раніше.');
+    Logger.log(out.join('\n'));
+    return out.join('\n');
+  }
+
+  try {
+    var blob = Utilities.newBlob('test', 'text/plain', 'checklist_access_test.txt');
+    var f = folder.createFile(blob);
+    out.push('✅ Запис у папку працює (файл ' + f.getId() + ')');
+    f.setTrashed(true);
+    out.push('✅ Тестовий файл видалено');
+    out.push('');
+    out.push('Фото зберігатимуться коректно.');
+  } catch (e) {
+    out.push('❌ ЗАПИС У ПАПКУ НЕ ПРАЦЮЄ: ' + e);
+    out.push('');
+    out.push('Що зробити: відкрийте папку на Drive і дайте акаунту');
+    out.push('' + Session.getEffectiveUser().getEmail() + ' право «Редактор».');
+    out.push('Або створіть нову папку цим акаунтом і впишіть її ID у PHOTO_FOLDER_ID.');
+  }
+
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
