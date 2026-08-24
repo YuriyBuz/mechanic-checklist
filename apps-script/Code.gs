@@ -7,7 +7,13 @@
  *   • report_id перевіряється — повтор із офлайн-черги не створює дубль;
  *   • tryLock перевіряється, аркуш береться за іменем;
  *   • повертає справжній JSON, тож клієнт може перестати слати mode:'no-cors';
- *   • невдале збереження фото ВИДНО у відповіді, а не ховається в текст звіту.
+ *   • невдале збереження фото ВИДНО у відповіді, а не ховається в текст звіту;
+ *   • автор звіту береться з токена входу, а не з того, що написав клієнт.
+ *
+ * ПЕРЕХІДНИЙ ПЕРІОД. Поки на телефонах лишається старий застосунок, звіт без
+ * токена приймається — інакше в день розгортання всі звіти почали б губитися.
+ * Коли всі перейдуть на новий клієнт, поставте властивість скрипта
+ * AUTH_REQUIRED = так, і без входу писати вже не можна буде.
  *
  * Клієнт має слати POST БЕЗ власного заголовка Content-Type — тоді браузер
  * поставить text/plain, preflight не виникне і відповідь буде читабельною.
@@ -18,7 +24,10 @@ var APP_VERSION = 'checklist-2026-08-23';
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) || 'getConfig';
   try {
-    if (action === 'getConfig') return jsonOut({ ok: true, config: buildClientConfig_() });
+    if (action === 'getConfig') {
+      var who = e.parameter.token ? authUserByToken_(e.parameter.token) : null;
+      return jsonOut({ ok: true, config: buildClientConfig_(e.parameter.role, who) });
+    }
     if (action === 'ping') return jsonOut({ ok: true, version: APP_VERSION, ts: nowIsoUtc() });
     return jsonOut({ ok: false, error: 'unknown action: ' + action });
   } catch (err) {
@@ -34,6 +43,19 @@ function doPost(e) {
     return jsonOut({ ok: false, error: 'bad json' });
   }
 
+  // Вхід і зміна PIN — окремі дії. Вони НЕ під загальним блокуванням:
+  // логін лише читає, а changePin бере блокування сам, усередині.
+  var action = payload.action || 'submit';
+  try {
+    if (action === 'login')     return jsonOut(authLogin_(payload.pin, payload.client_id));
+    if (action === 'whoami')    return jsonOut(authWhoami_(payload.token));
+    if (action === 'changePin') return jsonOut(authChangePin_(payload.token, payload.old_pin, payload.new_pin));
+    if (action !== 'submit')    return jsonOut({ ok: false, error: 'unknown action: ' + action });
+  } catch (err) {
+    logEvent('Техніка', 'action.failed', action + ': ' + err, {});
+    return jsonOut({ ok: false, error: String(err) });
+  }
+
   var result = withLock(function () { return submitReport_(payload); });
   if (!result.ok && result.retryable) {
     logEvent('Техніка', 'submit.busy', 'не вдалося взяти блокування', {});
@@ -44,6 +66,16 @@ function doPost(e) {
 function submitReport_(p) {
   var dict0 = loadDictionaries_();
   p = normalizeLegacyPayload_(p, dict0);          // ← сумісність зі старим клієнтом
+
+  var auth = authorizeSubmit_(p);
+  if (!auth.ok) return auth;
+  if (auth.user) {
+    // автора визначає токен, а не поле в payload: інакше будь-хто міг би
+    // підписати звіт чужим прізвищем
+    p.user_id = auth.user.user_id;
+    p.user_name = auth.user.full_name;
+  }
+
   var problems = validatePayload_(p);
   if (problems.length) {
     logEvent('Техніка', 'submit.invalid', problems.join('; '), { report_id: p && p.report_id });
@@ -117,7 +149,7 @@ function submitReport_(p) {
   appendRows(SH.PHOTOS, photos.rows);
 
   try {
-    sendReportEmail_(p, user, bizDate, cnt, alerts, photos, emailItems);
+    sendReportEmail_(p, user, bizDate, cnt, alerts, photos, emailItems, auth.user);
   } catch (mailErr) {
     // звіт уже збережено — розсилка не має його скасовувати, але мовчати теж не можна
     logEvent('Техніка', 'mail.failed', String(mailErr), { report_id: p.report_id });
@@ -182,6 +214,59 @@ function normalizeLegacyPayload_(p, dict) {
     app_version: 'legacy',
     items: items
   };
+}
+
+/**
+ * Хто це і чи має він право здавати саме цей чек-лист.
+ *
+ * Поки AUTH_REQUIRED не «так», звіт без токена приймається — це вікно для
+ * телефонів, на яких ще стоїть старий застосунок. Такий звіт помічається
+ * у журналі як anonymous, щоб було видно, скільки їх лишилося.
+ */
+function authorizeSubmit_(p) {
+  var required = String(PropertiesService.getScriptProperties()
+    .getProperty('AUTH_REQUIRED') || '').trim().toLowerCase();
+  var strict = ['так', 'yes', 'true', '1'].indexOf(required) > -1;
+
+  var user = null;
+  if (p && p.token) {
+    try {
+      user = authUserByToken_(p.token);
+    } catch (e) {
+      user = null;   // немає ще аркуша 04_Доступ — поводимося як без токена
+    }
+  }
+
+  if (!user) {
+    if (strict) {
+      logEvent('Доступ', 'submit.noauth', 'звіт без входу відхилено', { report_id: p && p.report_id });
+      return { ok: false, error: 'auth', message: 'Потрібен вхід за PIN' };
+    }
+    logEvent('Доступ', 'submit.anonymous', 'звіт зі старого клієнта, без входу',
+             { report_id: p && p.report_id });
+    return { ok: true, user: null };
+  }
+
+  if (user.must_change) {
+    return { ok: false, error: 'pin_change_required',
+             message: 'Спочатку замініть тимчасовий PIN на власний' };
+  }
+
+  var wantsMaster = p.role === 'Майстер';
+  if (wantsMaster && !user.can_master) {
+    logEvent('Доступ', 'submit.forbidden', user.full_name + ' → чек-лист майстра',
+             { user_id: user.user_id });
+    return { ok: false, error: 'forbidden',
+             message: 'Ваша роль не дає права здавати чек-лист майстра' };
+  }
+  if (!wantsMaster && !user.can_mech) {
+    logEvent('Доступ', 'submit.forbidden', user.full_name + ' → чек-лист механіка',
+             { user_id: user.user_id });
+    return { ok: false, error: 'forbidden',
+             message: 'Ваша роль не дає права здавати чек-лист механіка' };
+  }
+
+  return { ok: true, user: user };
 }
 
 function validatePayload_(p) {
@@ -252,10 +337,23 @@ function savePhotos_(p, answers, dict) {
   return out;
 }
 
-/** Конфігурація для клієнта: пункти, варіанти, працівники — з довідників. */
-function buildClientConfig_() {
+/**
+ * Конфігурація для клієнта: пункти, варіанти, працівники — з довідників.
+ *
+ * role — «Механік» або «Майстер». Якщо переданий токен, віддаємо тільки те,
+ * на що ця людина має право: майстер не має бачити чек-лист механіка і навпаки.
+ */
+function buildClientConfig_(role, who) {
   var it = readTable(SH.ITEMS), op = readTable(SH.OPTIONS), em = readTable(SH.EMPLOYEES);
   var today = businessDate();
+
+  var allowed = null;
+  if (who) {
+    allowed = {};
+    if (who.can_mech) allowed['Механік'] = true;
+    if (who.can_master) allowed['Майстер'] = true;
+  }
+  var wantRole = ['Механік', 'Майстер'].indexOf(String(role)) > -1 ? String(role) : '';
 
   var opts = {};
   op.rows.forEach(function (r) {
@@ -267,6 +365,8 @@ function buildClientConfig_() {
     var o = {};
     it.header.forEach(function (h, i) { o[h] = r[i]; });
     if (!o.item_id || o.visible_on === 'none') return false;
+    if (wantRole && o.role !== wantRole) return false;
+    if (allowed && !allowed[o.role]) return false;
     return !o.active_to || String(o.active_to) >= today;
   }).map(function (r) {
     var o = {};
@@ -279,5 +379,10 @@ function buildClientConfig_() {
   var staff = em.rows.filter(function (r) { return r[0] && String(r[3]).trim() !== 'ні'; })
     .map(function (r) { return { user_id: r[0], name: r[1], role: r[2] }; });
 
-  return { version: APP_VERSION, items: items, employees: staff };
+  return {
+    version: APP_VERSION,
+    items: items,
+    employees: staff,
+    can: who ? { mech: who.can_mech, master: who.can_master } : null
+  };
 }

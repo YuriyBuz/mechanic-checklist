@@ -14,6 +14,24 @@ function recipients_(key) {
 }
 
 /**
+ * Кому йде цей конкретний звіт: постійний список MAIL_TO плюс власна пошта
+ * автора, якщо його роль це дає (mech.admin, shift.master, admin).
+ *
+ * Ролі mech.use пошта не належить — вона тільки здає чек-лист.
+ * Якщо якийсь керівник має отримувати ВСІ звіти, а не лише свої, його адресу
+ * треба дописати в MAIL_TO: роль на це не впливає.
+ */
+function recipientsFor_(authUser) {
+  var to = recipients_('MAIL_TO');
+  if (authUser && authUser.can_email && authUser.email) {
+    var own = String(authUser.email).trim();
+    var has = to.some(function (a) { return a.toLowerCase() === own.toLowerCase(); });
+    if (!has) to.push(own);
+  }
+  return to;
+}
+
+/**
  * Лист. ВЕРСТКА — ТА САМА, ЩО У СТАРОМУ doPost: заголовок, дата, розділ на
  * кожну категорію, таблиця «Пункт | Статус/Дані | Фото», інлайн-фото з
  * посиланням, червона підсвітка відхилень. Нічого в оформленні не змінено.
@@ -21,8 +39,8 @@ function recipients_(key) {
  * Єдина відмінність від старого: статус береться з довідників, а не з позиції
  * кнопки, тому ❗ тепер стоїть там, де справді відхилення.
  */
-function sendReportEmail_(p, user, bizDate, cnt, alerts, photos, items) {
-  var to = recipients_('MAIL_TO');
+function sendReportEmail_(p, user, bizDate, cnt, alerts, photos, items, authUser) {
+  var to = recipientsFor_(authUser);
   if (!to.length) {
     logEvent('Техніка', 'mail.skipped', 'MAIL_TO не заданий у властивостях скрипта', {});
     return;
