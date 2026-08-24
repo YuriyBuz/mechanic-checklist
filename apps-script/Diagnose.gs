@@ -152,3 +152,67 @@ function explainSkipped(rowNumbers) {
   Logger.log(msg);
   return msg;
 }
+
+
+/**
+ * Суха перевірка нового doPost на payload СТАРОГО клієнта.
+ * Нічого не пише в таблицю — тільки показує, що потрапило б у 11/12/13.
+ *
+ * Саме цей формат зараз шле застосунок механіків.
+ */
+function dryRunLegacyPost() {
+  var dict = loadDictionaries_();
+  var payload = {
+    date: Utilities.formatDate(new Date(), TZ, 'dd.MM.yyyy') + ', 08:15:00',
+    time: '08:15:00',
+    mechanic: 'Гора Андрій Олександрович',
+    shiftStage: 'Початок зміни',
+    summary: 'Виконано 38 з 38',
+    items: [
+      { text: 'Температура компресорів', completed: true, value: '№1: 55 / №2: 92', comment: '', isBad: false },
+      { text: 'Проконтролювати відсутність помилок на пультах керування компресорів.',
+        completed: true, value: 'Відсутні', comment: '', isBad: false },
+      { text: 'UF знезараження H2O: UF лампа світить?', completed: true, value: 'Ні', comment: 'лампа перегоріла', isBad: true },
+      { text: 'Зіставити поточну температуру всередині з установленим режимом.',
+        completed: true, value: '-3,-2,-2', comment: '', isBad: false },
+      { text: 'Зробити фото інформаційного табло генератора.', completed: true, value: 'Нема', comment: '', isBad: false }
+    ]
+  };
+
+  var p = normalizeLegacyPayload_(payload, dict);
+  var out = [];
+  out.push('report_id      : ' + p.report_id);
+  out.push('business_date  : ' + p.business_date + '   stage: ' + p.stage + '   role: ' + p.role);
+  out.push('user           : ' + p.user_name + ' → ' + (dict.byName[p.user_name] || 'U-000'));
+  out.push('config_version : ' + p.config_version);
+  out.push('');
+  out.push('Пункти:');
+
+  var cnt = { ok: 0, warn: 0, alert: 0, empty: 0, unknown: 0 };
+  p.items.forEach(function (it) {
+    var item = dict.byId[it.item_id];
+    var st;
+    if (!item) st = 'unknown';
+    else if (item.type === 'binary') st = dict.optStatus[it.item_id + '|' + it.value] || 'unknown';
+    else if (item.type === 'number') st = it.values.length
+      ? worstStatus(it.values.map(function (v, f) { return numberStatus_(item, f + 1, v); }))
+      : 'empty';
+    else st = it.value ? 'ok' : 'empty';
+    cnt[st] = (cnt[st] || 0) + 1;
+    out.push('  ' + (st === 'alert' ? '❗' : st === 'warn' ? '⚠️' : st === 'ok' ? '✅' : '·') +
+             ' ' + st.toUpperCase() + '  ' + (it.item_id || 'БЕЗ item_id') +
+             '  ←  «' + it.value + '»' + (it.values.length ? '  числа: ' + it.values.join(', ') : ''));
+  });
+
+  out.push('');
+  out.push('Підсумок: ' + JSON.stringify(cnt));
+  out.push('');
+  out.push('Очікуємо: температура 92 °C → alert (норма 15-85), UF лампа «Ні» → alert,');
+  out.push('температура контейнера -3/-2/-2 → ok, «Нема» → «Помилок немає» → ok.');
+  out.push('');
+  out.push('НІЧОГО НЕ ЗАПИСАНО — це суха перевірка.');
+
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
