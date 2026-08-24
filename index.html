@@ -507,10 +507,10 @@
         const UNLOCK_KEY     = 'checklistOfflineUnlockV1';
 
         /* Зміна триває 12 годин — стільки ж живе сесія.
-           Простій довший за це — привід перепитати PIN. Обхід цеху з
-           паузами між пунктами сюди вкладається; телефон, забутий
-           у роздягальні, — ні. */
-        const IDLE_LIMIT_MS      = 30 * 60 * 1000;
+           Простій 10 хвилин — привід перепитати PIN: телефон, забутий
+           у роздягальні, не лишається відкритим чек-листом. Те саме число,
+           що в ЗІП, щоб звичка була одна на два застосунки. */
+        const IDLE_LIMIT_MS      = 10 * 60 * 1000;
         const OFFLINE_SESSION_MS = 12 * 60 * 60 * 1000;
         const UNLOCK_MAX_AGE_MS  = 7 * 24 * 60 * 60 * 1000;   // не довше тижня від входу онлайн
         const UNLOCK_ITERATIONS  = 150000;
@@ -872,8 +872,6 @@
                     business_date: bizDate,
                     stage: stage,
                     role: 'Механік',
-                    user_id: (session && session.user) ? session.user.user_id : '',
-                    user_name: employeeSelect.value,
                     config_version: CONFIG_VERSION,
                     app_version: APP_VERSION,
                     summary: `Виконано ${done} з ${els.length}`,
@@ -1430,14 +1428,23 @@
                 document.getElementById('statusText').textContent = 'Синхронізація...';
 
                 const newQueue = [];
-                let sent = 0, refused = 0, lastMsg = '', needLogin = false;
+                let sent = 0, refused = 0, lastMsg = '', needLogin = false, foreign = 0;
                 try {
+                const me = (session && session.user) ? session.user.user_id : '';
                 for (const report of queue) {
+                    if (report._author && me && report._author !== me) {
+                        // чужий звіт: сервер підписав би його тим, хто зараз у сесії
+                        newQueue.push(report);
+                        foreign++;
+                        continue;
+                    }
                     let res = null;
                     try {
                         // токен беремо ПОТОЧНИЙ: той, що був у мить збереження,
                         // міг застаріти, поки звіт лежав у черзі
-                        res = await api(Object.assign({}, report, { token: sessionToken() }));
+                        const body = Object.assign({}, report, { token: sessionToken() });
+                        delete body._author;                       // це суто локальна позначка
+                        res = await api(body);
                     } catch (e) {
                         res = null;
                     }
@@ -1455,6 +1462,9 @@
 
                 if (sent && !newQueue.length) {
                     customAlert(`Збережені звіти відправлено: ${sent}`);
+                } else if (foreign && !refused) {
+                    customAlert(`На цьому пристрої чекає ${foreign} звіт(ів), складених іншим працівником.\n\n` +
+                                'Вони підуть, коли ця людина увійде за своїм PIN.');
                 } else if (needLogin) {
                     await handleAuthFailure('Увійдіть за PIN, щоб надіслати збережені звіти — вони на місці.');
                 } else if (refused) {
@@ -1586,6 +1596,10 @@
 
                 const payload = buildPayload(section);
                 const shortName = employeeSelect.value.split(' ')[1] || employeeSelect.value;
+                // локальна позначка: ім'я автора на сервер не йде, але звіт,
+                // складений у чергу однією людиною, не має піти від імені
+                // наступної, яка увійде на цьому ж телефоні
+                payload._author = (session && session.user) ? session.user.user_id : '';
 
                 const reset = () => {
                     btn.disabled = false;
@@ -1621,7 +1635,9 @@
 
                 let res = null;
                 try {
-                    res = await api(Object.assign({ token: sessionToken() }, payload));
+                    const body = Object.assign({ token: sessionToken() }, payload);
+                    delete body._author;                       // суто локальна позначка
+                    res = await api(body);
                 } catch (e) {
                     console.error(e);
                     queueIt('Не вдалося достукатися до сервера.');

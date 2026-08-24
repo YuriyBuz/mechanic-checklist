@@ -105,6 +105,44 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   t('після входу черга пішла', (await queueLen()) === 0);
   t('сервер отримав звіт', (await (await fetch(BASE + '/received')).json()).length === 1);
 
+  console.log('\n── чужий звіт у черзі ──');
+  // ctx.setOffline(false) сам піднімає подію online і черга йде одразу, тому
+  // сценарій «інша людина на тому ж телефоні» складаємо детерміновано:
+  // кладемо в чергу звіт Гори і входимо Сабадашем
+  await fetch(BASE + '/reset');
+  await fill();
+  const foreign = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Kyiv' }).format(new Date()) +
+                  '_mech_start_aa11bb';
+  await page.evaluate((rid) => {
+    localStorage.setItem('offlineReportsQueue', JSON.stringify([{
+      action: 'submit', report_id: rid, business_date: rid.split('_')[0],
+      stage: 'Початок зміни', role: 'Механік', config_version: 'test', app_version: 'test',
+      summary: 'Виконано 1 з 1', _author: 'U-003',          // Гора
+      items: [{ item_id: 'mech.1-1', value: '20 / 21', values: ['20', '21'], comment: '', photoData: null }]
+    }]));
+  }, foreign);
+  await page.evaluate(() => { dropSession(); requireLogin(); });
+  await page.waitForTimeout(300);
+  await page.fill('#authPin', '3773'); await page.click('#authLoginBtn'); await page.waitForTimeout(1200);
+  await closeDlg();
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await page.waitForTimeout(2000);
+  t('чужий звіт не відправлено', (await queueLen()) === 1);
+  t('на сервер нічого не пішло', (await (await fetch(BASE + '/received')).json()).length === 0);
+  t('сказано, чий він і що робити', (await dlgText()).includes('іншим працівником'));
+  await closeDlg();
+
+  await page.evaluate(() => { dropSession(); requireLogin(); });
+  await page.waitForTimeout(300);
+  await page.fill('#authPin', '2468'); await page.click('#authLoginBtn'); await page.waitForTimeout(1200);
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await page.waitForTimeout(2200); await closeDlg();
+  t('автор увійшов — звіт пішов', (await queueLen()) === 0);
+  const own = await (await fetch(BASE + '/received')).json();
+  t('підписано автором, а не тим, хто заходив між тим',
+    own.length === 1 && own[0]._author === 'Гора Андрій Олександрович' && own[0].report_id === foreign);
+  t('локальна позначка на сервер не поїхала', own[0]._clientAuthor === null);
+
   console.log('\n── сервер відмовив: сесія протухла ──');
   await fetch(BASE + '/reset');
   await fill();

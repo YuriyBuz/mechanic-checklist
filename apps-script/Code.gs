@@ -294,6 +294,12 @@ function authorizeSubmit_(p) {
   return { ok: true, user: user };
 }
 
+/**
+ * Перевіряється ПІСЛЯ authorizeSubmit_, і це важливо: автора там уже
+ * проставлено з підтвердженої сесії. Новий клієнт імені взагалі не надсилає —
+ * вимога «немає автора» лишається тільки для звітів зі старого застосунку,
+ * поки AUTH_REQUIRED не «так».
+ */
 function validatePayload_(p) {
   var out = [];
   if (!p) return ['порожній payload'];

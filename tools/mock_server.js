@@ -92,7 +92,9 @@ const srv = http.createServer((req, res) => {
       const need = p.role === 'Майстер' ? 'master' : 'mech';
       if (!u.can[need]) return json({ ok: false, error: 'FORBIDDEN',
         message: 'Ваша роль не дає права здавати цей чек-лист' });
-      received.push(Object.assign({}, p, { _author: u.name }));
+      // _author — це те, що визначив «сервер»; _clientAuthor фіксує, чи клієнт
+      // узагалі надсилав щось про автора (не має надсилати)
+      received.push(Object.assign({}, p, { _author: u.name, _clientAuthor: p._author || null }));
       return json({ ok: true, report_id: p.report_id, counts: { ok: p.items.length }, warnings: [] });
     }
     json({ ok: false, error: 'unknown action: ' + act });

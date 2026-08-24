@@ -114,6 +114,7 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   t('токен і пристрій надіслані', !!p.token && !!p.deviceId);
   t('роль і стадія', p.role === 'Механік' && p.stage === 'Початок зміни');
   t('автора визначив сервер, а не клієнт', p._author === 'Гора Андрій Олександрович');
+  t('клієнт імені автора не надсилає', p.user_name === undefined && p.user_id === undefined);
   t('report_id за київською датою',
     new RegExp('^' + new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Kyiv' }).format(new Date()) +
                '_mech_start_[0-9a-f]{6}$').test(p.report_id));
