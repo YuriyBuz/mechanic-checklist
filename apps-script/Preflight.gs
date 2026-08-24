@@ -6,6 +6,22 @@
  * чи не переміг старий doPost? що вже створено?
  */
 
+/** Найпростіша перевірка: чи взагалі виконується код у цьому проєкті. */
+function ping() {
+  var msg = 'ping ok · ' + new Date();
+  Logger.log(msg);
+  return msg;
+}
+
+/** Другий крок: чи є доступ до таблиці (тут з'явиться запит авторизації). */
+function pingSpreadsheet() {
+  var ss_ = SpreadsheetApp.getActive();
+  var msg = ss_ ? ('таблиця: ' + ss_.getName() + ' · ' + ss_.getId())
+                : 'getActive() повернув null — скрипт не прив\'язаний до таблиці';
+  Logger.log(msg);
+  return msg;
+}
+
 function preflight() {
   var out = [];
   function say(ok, text) { out.push((ok === null ? '·  ' : (ok ? '✅ ' : '❌ ')) + text); }
