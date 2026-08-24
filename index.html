@@ -234,8 +234,7 @@
             <select id="employeeSelect" class="block w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 card text-muted">
                 <option value="">Оберіть зі списку</option>
             </select>
-            <div class="flex justify-end gap-4 mt-2">
-                <button id="changePinBtn" class="text-xs font-semibold text-muted hover:text-emerald-600 transition-colors">Змінити PIN</button>
+            <div class="flex justify-end mt-2">
                 <button id="logoutBtn" class="text-xs font-semibold text-muted hover:text-emerald-600 transition-colors">Вийти</button>
             </div>
         </div>
@@ -294,22 +293,6 @@
                        class="block w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg text-center text-2xl tracking-[0.5em] font-bold card focus:outline-none focus:ring-2 focus:ring-emerald-500"
                        placeholder="••••">
                 <button id="authLoginBtn" class="mt-4 w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-colors">Увійти</button>
-            </div>
-
-            <div id="authChangePane" class="hidden">
-                <h3 class="text-xl font-bold mb-1">Новий PIN</h3>
-                <p id="authChangeHint" class="text-muted text-sm mb-4">Придумайте власний код: 4–6 цифр</p>
-                <input id="authOldPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8"
-                       class="block w-full p-3 mb-2 border border-gray-300 dark:border-slate-600 rounded-lg text-center text-lg font-bold card focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                       placeholder="Поточний PIN">
-                <input id="authNewPin" type="password" inputmode="numeric" autocomplete="off" maxlength="6"
-                       class="block w-full p-3 mb-2 border border-gray-300 dark:border-slate-600 rounded-lg text-center text-lg font-bold card focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                       placeholder="Новий PIN">
-                <input id="authNewPin2" type="password" inputmode="numeric" autocomplete="off" maxlength="6"
-                       class="block w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg text-center text-lg font-bold card focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                       placeholder="Повторіть новий PIN">
-                <button id="authChangeBtn" class="mt-4 w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-colors">Зберегти PIN</button>
-                <button id="authChangeCancel" class="mt-2 w-full py-2 text-muted text-sm font-semibold hidden">Скасувати</button>
             </div>
 
             <p id="authError" class="mt-3 text-sm font-bold text-red-600 hidden"></p>
@@ -505,28 +488,49 @@
         };
 
         /* ────────────────────────── ВХІД ЗА PIN ──────────────────────────
-           Логін — сам PIN, без вибору прізвища: у довіднику доступу вони
-           унікальні. Прізвище механіка більше не обирається зі списку —
-           воно береться з того, хто увійшов, і саме воно потрапляє у звіт.
+           Зроблено так само, як у ЗІП (Spare-parts-mechanic-service), щоб
+           обидва застосунки поводилися однаково.
 
-           Токен зберігається на цьому пристрої. Сервер гасить його, щойно
-           працівник змінить PIN, тож чужий телефон із давньою сесією
-           перестає працювати одразу після зміни коду.                     */
+           PIN живе тільки в кадровій таблиці, колонка Q. Змінити його
+           з додатку не можна — ані собі, ані комусь. Забув або збігся
+           з чужим — правиться в таблиці.
 
-        const APP_VERSION    = 'checklist-client-2026-08-24';
-        const CONFIG_VERSION = 'client-2026-08-24';
-        const SESSION_KEY    = 'checklistSession_v1';
-        const DEVICE_KEY     = 'checklistDeviceId';
+           Прізвище механіка більше не обирається зі списку: його дає вхід,
+           і саме воно потрапляє у звіт. Підмінити автора неможливо —
+           сервер бере ім'я з підтвердженої сесії, а не з запиту.          */
+
+        const APP_VERSION    = 'checklist-client-2026-08-25';
+        const CONFIG_VERSION = 'client-2026-08-25';
+        const SESSION_KEY    = 'checklistSessionV1';
+        const DEVICE_KEY     = 'checklistDeviceIdV1';
+        const ACTIVITY_KEY   = 'checklistLastActivityV1';
+        const UNLOCK_KEY     = 'checklistOfflineUnlockV1';
+
+        /* Зміна триває 12 годин — стільки ж живе сесія.
+           Простій довший за це — привід перепитати PIN. Обхід цеху з
+           паузами між пунктами сюди вкладається; телефон, забутий
+           у роздягальні, — ні. */
+        const IDLE_LIMIT_MS      = 30 * 60 * 1000;
+        const OFFLINE_SESSION_MS = 12 * 60 * 60 * 1000;
+        const UNLOCK_MAX_AGE_MS  = 7 * 24 * 60 * 60 * 1000;   // не довше тижня від входу онлайн
+        const UNLOCK_ITERATIONS  = 150000;
+
         let session = null;
+        let idleTimer = null;
+        let lastActivityWrite = 0;
+        /* Хук на зміну сесії: підставляє прізвище у поле механіка. Вхід буває
+           не тільки на старті — ще й після простою, протухлої сесії й офлайн-
+           розблокування, і в кожному з цих випадків прізвище треба оновити. */
+        let onSessionChange = () => {};
 
-        const deviceId = () => {
-            let d = localStorage.getItem(DEVICE_KEY);
-            if (!d) {
-                d = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
-                    : String(Date.now()) + Math.random().toString(16).slice(2);
-                localStorage.setItem(DEVICE_KEY, d);
+        const getDeviceId = () => {
+            let id = localStorage.getItem(DEVICE_KEY);
+            if (!id) {
+                id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+                     : Date.now().toString(36) + Math.random().toString(36).slice(2);
+                localStorage.setItem(DEVICE_KEY, id);
             }
-            return d;
+            return id;
         };
 
         /* Свій Content-Type НЕ ставимо: тоді браузер шле text/plain, preflight
@@ -536,149 +540,215 @@
             const res = await fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
                 redirect: 'follow',
-                body: JSON.stringify(payload)
+                body: JSON.stringify(Object.assign({ deviceId: getDeviceId() }, payload))
             });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             return res.json();
         };
 
-        const saveSession = () => {
-            try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {}
+        const loadSession = () => {
+            try {
+                const stored = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+                if (stored && stored.expiresAt > Date.now()) return stored;
+            } catch (e) { /* зіпсований запис — вважаємо, що сесії немає */ }
+            localStorage.removeItem(SESSION_KEY);
+            return null;
+        };
+        const saveSession = (value) => {
+            session = value;
+            try { localStorage.setItem(SESSION_KEY, JSON.stringify(value)); } catch (e) {}
         };
         const dropSession = () => {
             session = null;
             try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
         };
 
+        /* ── локальне розблокування без мережі ──
+           На пристрої лежить не PIN, а повільно обчислений перевірник.
+           Це дає змогу заповнити чек-лист там, де немає зв'язку; справжній
+           бар'єр — токен, який сервер перевіряє під час запису. */
+        const toHex = (buffer) => Array.from(new Uint8Array(buffer))
+            .map(b => b.toString(16).padStart(2, '0')).join('');
+
+        const derivePinHash = async (pin, saltHex) => {
+            const salt = Uint8Array.from(saltHex.match(/.{2}/g).map(p => parseInt(p, 16)));
+            const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin),
+                                                      'PBKDF2', false, ['deriveBits']);
+            const bits = await crypto.subtle.deriveBits(
+                { name: 'PBKDF2', salt, iterations: UNLOCK_ITERATIONS, hash: 'SHA-256' }, key, 256);
+            return toHex(bits);
+        };
+
+        const saveOfflineUnlock = async (pin, user) => {
+            if (!window.crypto || !crypto.subtle) return;
+            try {
+                const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
+                localStorage.setItem(UNLOCK_KEY, JSON.stringify({
+                    salt, hash: await derivePinHash(pin, salt), verifiedAt: Date.now(), user: user
+                }));
+            } catch (e) { /* без крипто-API просто не буде офлайн-входу */ }
+        };
+
+        const tryOfflineUnlock = async (pin) => {
+            if (!window.crypto || !crypto.subtle) return null;
+            let record = null;
+            try { record = JSON.parse(localStorage.getItem(UNLOCK_KEY) || 'null'); } catch (e) { return null; }
+            if (!record || !record.salt) return null;
+            if (Date.now() - record.verifiedAt > UNLOCK_MAX_AGE_MS) return null;
+            try {
+                return (await derivePinHash(pin, record.salt)) === record.hash ? record : null;
+            } catch (e) { return null; }
+        };
+
+        /* ── автовихід через простій ──
+           Мітка часу лежить у сховищі, тому простій переживає і перезавантаження
+           сторінки, і закриття вкладки. */
+        const autoLogout = (why) => {
+            if (!session) return;
+            dropSession();
+            showLoginOverlay(why || 'Сесію завершено. Увійдіть за PIN.');
+        };
+
+        const markActivity = () => {
+            if (!session) return;
+            const now = Date.now();
+            if (now - lastActivityWrite > 5000) {
+                try { localStorage.setItem(ACTIVITY_KEY, String(now)); } catch (e) {}
+                lastActivityWrite = now;
+            }
+            if (idleTimer) clearTimeout(idleTimer);
+            idleTimer = setTimeout(() => autoLogout(
+                'Сесію завершено через ' + (IDLE_LIMIT_MS / 60000) + ' хвилин бездіяльності. Увійдіть за PIN.'),
+                IDLE_LIMIT_MS);
+        };
+
+        const isIdleExpired = () => {
+            const last = Number(localStorage.getItem(ACTIVITY_KEY) || 0);
+            return !!last && Date.now() - last > IDLE_LIMIT_MS;
+        };
+
+        const startIdleWatch = () => {
+            ['click', 'keydown', 'touchstart', 'scroll'].forEach(type =>
+                document.addEventListener(type, markActivity, { passive: true }));
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden && session && isIdleExpired()) {
+                    autoLogout('Сесію завершено через бездіяльність. Увійдіть за PIN.');
+                }
+            });
+            markActivity();
+        };
+
+        /* ── екран входу ── */
         const setAuthError = (msg) => {
             const el = document.getElementById('authError');
             el.textContent = msg || '';
             el.classList.toggle('hidden', !msg);
         };
 
-        const showAuthPane = (which) => {
-            document.getElementById('authLoginPane').classList.toggle('hidden', which !== 'login');
-            document.getElementById('authChangePane').classList.toggle('hidden', which !== 'change');
-            setAuthError('');
-        };
-
-        const openAuthOverlay = () => {
+        let loginResolve = null;
+        const showLoginOverlay = (message) => {
             const o = document.getElementById('authOverlay');
             o.classList.remove('hidden');
             o.classList.add('flex');
+            document.getElementById('authPin').value = '';
+            setAuthError(message || '');
+            setTimeout(() => document.getElementById('authPin').focus(), 100);
         };
-        const closeAuthOverlay = () => {
+        const hideLoginOverlay = () => {
             const o = document.getElementById('authOverlay');
             o.classList.add('hidden');
             o.classList.remove('flex');
-            ['authPin', 'authOldPin', 'authNewPin', 'authNewPin2']
-                .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+            document.getElementById('authPin').value = '';
         };
 
-        /* Зміна PIN. forced=true — це тимчасовий код, виданий адміністратором:
-           скасувати не можна, інакше ним і далі можна було б користуватися. */
-        const openChangePin = (oldPin, forced) => new Promise((resolve) => {
-            openAuthOverlay();
-            showAuthPane('change');
-            const o    = document.getElementById('authOldPin');
-            const n1   = document.getElementById('authNewPin');
-            const n2   = document.getElementById('authNewPin2');
-            const btn  = document.getElementById('authChangeBtn');
-            const skip = document.getElementById('authChangeCancel');
-
-            o.value = oldPin || ''; n1.value = ''; n2.value = '';
-            document.getElementById('authChangeHint').textContent = forced
-                ? 'Тимчасовий код треба замінити на власний: 4–6 цифр'
-                : 'Придумайте власний код: 4–6 цифр';
-            skip.classList.toggle('hidden', !!forced);
-            setTimeout(() => (oldPin ? n1 : o).focus(), 100);
-
-            const save = async () => {
-                setAuthError('');
-                if (n1.value.trim() !== n2.value.trim()) { setAuthError('Новий PIN уведено двічі по-різному'); return; }
-                if (!/^\d{4,6}$/.test(n1.value.trim())) { setAuthError('PIN — від 4 до 6 цифр'); return; }
-                btn.disabled = true; btn.textContent = 'Збереження…';
-                let r = null;
-                try {
-                    r = await api({ action: 'changePin', token: session && session.token,
-                                    old_pin: o.value.trim(), new_pin: n1.value.trim() });
-                } catch (e) { r = null; }
-                btn.disabled = false; btn.textContent = 'Зберегти PIN';
-                if (!r) { setAuthError('Немає зв\'язку із сервером'); return; }
-                if (!r.ok) { setAuthError(r.message || 'Не вдалося змінити PIN'); return; }
-                session.token = r.token;
-                session.must_change = false;
-                saveSession();
-                closeAuthOverlay();
-                customAlert('PIN змінено. Наступного разу заходьте новим кодом.');
-                resolve(true);
-            };
-
-            btn.onclick = save;
-            [o, n1, n2].forEach(el => { el.onkeydown = e => { if (e.key === 'Enter') save(); }; });
-            skip.onclick = () => { closeAuthOverlay(); resolve(false); };
-        });
-
-        const waitForLogin = () => new Promise((resolve) => {
-            openAuthOverlay();
-            showAuthPane('login');
-            const pin = document.getElementById('authPin');
+        const doLogin = async () => {
+            const input = document.getElementById('authPin');
             const btn = document.getElementById('authLoginBtn');
-            setTimeout(() => pin.focus(), 100);
+            const pin = input.value.trim();
+            if (!pin) { setAuthError('Введіть PIN'); return; }
 
-            const tryLogin = async () => {
-                const v = pin.value.trim();
-                if (!v) { setAuthError('Введіть PIN'); return; }
-                setAuthError('');
-                btn.disabled = true; btn.textContent = 'Перевірка…';
-                let r = null;
-                try { r = await api({ action: 'login', pin: v, client_id: deviceId() }); }
-                catch (e) { r = null; }
-                btn.disabled = false; btn.textContent = 'Увійти';
-                pin.value = '';
+            setAuthError('');
+            btn.disabled = true; btn.textContent = 'Перевірка…';
+            let data = null, offline = false;
+            try {
+                data = await api({ action: 'login', pin: pin });
+            } catch (e) {
+                // сервера немає — пробуємо локальне розблокування
+                const record = await tryOfflineUnlock(pin);
+                if (record) { data = { ok: true, user: record.user }; offline = true; }
+            }
+            btn.disabled = false; btn.textContent = 'Увійти';
+            input.value = '';
 
-                if (!r) { setAuthError('Немає зв\'язку із сервером. Перевірте інтернет.'); return; }
-                if (!r.ok) { setAuthError(r.message || 'Невірний PIN'); return; }
-                if (!r.user.can.mech) {
-                    setAuthError('Ваша роль не дає доступу до чек-листа механіка');
-                    return;
-                }
-                session = { token: r.token, user: r.user, must_change: !!r.must_change };
-                saveSession();
-                if (r.must_change) { await openChangePin(v, true); }
-                closeAuthOverlay();
-                resolve();
-            };
+            if (!data) {
+                setAuthError('Немає зв\'язку. Локальний вхід недоступний — спершу увійдіть один раз онлайн.');
+                return;
+            }
+            if (!data.ok) { setAuthError(data.message || 'Невірний PIN'); return; }
+            if (!data.user.can.mech) {
+                setAuthError('Ваша роль не дає доступу до чек-листа механіка');
+                return;
+            }
 
-            btn.onclick = tryLogin;
-            pin.onkeydown = e => { if (e.key === 'Enter') tryLogin(); };
+            saveSession({
+                token: offline ? '' : data.token,
+                user: data.user,
+                expiresAt: offline ? (Date.now() + OFFLINE_SESSION_MS)
+                                   : (data.expires_at || Date.now() + OFFLINE_SESSION_MS),
+                offline: offline
+            });
+            if (!offline) saveOfflineUnlock(pin, data.user);   // 150 000 ітерацій — рахуємо у фоні
+
+            hideLoginOverlay();
+            startIdleWatch();
+            onSessionChange();
+            if (offline) {
+                customAlert('Зв\'язку немає. Чек-лист можна заповнити — звіт піде, щойно ' +
+                            'з\'явиться інтернет і ви увійдете онлайн.');
+            }
+            if (loginResolve) { const r = loginResolve; loginResolve = null; r(); }
+        };
+
+        /** Показує екран входу і чекає, доки не увійдуть. */
+        const requireLogin = (message) => new Promise((resolve) => {
+            loginResolve = resolve;
+            showLoginOverlay(message);
         });
 
-        /* Повертає, коли на пристрої є дійсна сесія механіка.
-           Без мережі покладаємося на збережений профіль — інакше зміну,
-           яку здають у цеху без зв'язку, не було б де заповнити. */
+        /** Сервер сказав, що сесії немає: стираємо і просимо PIN. */
+        const handleAuthFailure = (message) => {
+            dropSession();
+            return requireLogin(message || 'Сесію завершено. Увійдіть за PIN.');
+        };
+
+        /**
+         * Повертає, коли на пристрої є дійсна сесія механіка.
+         * Онлайн — звіряємо з сервером: звільнення або зміна ролі мають
+         * подіяти одразу, а не після закінчення сесії.
+         */
         const bootAuth = async () => {
-            try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }
-            catch (e) { session = null; }
+            session = loadSession();
+            if (session && isIdleExpired()) { dropSession(); }
 
-            if (session && session.token) {
-                let r = null;
-                try { r = await api({ action: 'whoami', token: session.token }); }
-                catch (e) { r = null; }
-
-                if (r && r.ok) {
-                    session = { token: session.token, user: r.user, must_change: !!r.must_change };
-                    saveSession();
-                    if (session.must_change) { await openChangePin('', true); }
-                    if (session.user.can.mech) { closeAuthOverlay(); return; }
-                    dropSession();
-                } else if (r) {
-                    dropSession();          // сервер сказав, що сесії немає
-                } else if (session.user && session.user.can && session.user.can.mech && !session.must_change) {
-                    return;                 // зв'язку немає — працюємо офлайн
+            if (session) {
+                if (!session.offline && session.token) {
+                    let r = null;
+                    try { r = await api({ action: 'whoami', token: session.token }); }
+                    catch (e) { r = null; }                       // зв'язку немає — довіряємо сесії
+                    if (r && r.ok) {
+                        if (!r.user.can.mech) {
+                            dropSession();
+                            return requireLogin('Ваша роль більше не дає доступу до чек-листа механіка');
+                        }
+                        saveSession(Object.assign({}, session, { user: r.user }));
+                        onSessionChange();
+                    } else if (r) {
+                        dropSession();
+                    }
                 }
             }
-            return waitForLogin();
+            if (session) { hideLoginOverlay(); startIdleWatch(); return; }
+            return requireLogin();
         };
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -821,11 +891,15 @@
                 };
             };
 
+            /** Токен онлайн-сесії. Офлайн-вхід токена не має — звіт чекає в черзі. */
+            const sessionToken = () => (session && !session.offline && session.token) ? session.token : '';
+
             /** Хто увійшов — той і підписує звіт. Список прізвищ більше не потрібен. */
             const applySession = () => {
                 if (!employeeSelect || !session || !session.user) return;
+                const label = session.user.name + (session.offline ? ' · офлайн-режим' : '');
                 employeeSelect.innerHTML = '';
-                employeeSelect.add(new Option(session.user.name, session.user.name));
+                employeeSelect.add(new Option(label, session.user.name));
                 employeeSelect.value = session.user.name;
                 employeeSelect.disabled = true;
             };
@@ -1356,20 +1430,24 @@
                 document.getElementById('statusText').textContent = 'Синхронізація...';
 
                 const newQueue = [];
-                let sent = 0, refused = 0, lastMsg = '';
+                let sent = 0, refused = 0, lastMsg = '', needLogin = false;
                 try {
                 for (const report of queue) {
                     let res = null;
                     try {
                         // токен беремо ПОТОЧНИЙ: той, що був у мить збереження,
                         // міг застаріти, поки звіт лежав у черзі
-                        res = await api(Object.assign({}, report, { token: session && session.token }));
+                        res = await api(Object.assign({}, report, { token: sessionToken() }));
                     } catch (e) {
                         res = null;
                     }
                     if (res && (res.ok || res.duplicate)) { sent++; continue; }
-                    if (res && !res.ok) { refused++; lastMsg = res.message || res.error || ''; }
-                    newQueue.push(report);
+                    if (res && !res.ok) {
+                        refused++;
+                        lastMsg = res.message || res.error || '';
+                        if (res.error === 'AUTH') needLogin = true;
+                    }
+                    newQueue.push(report);   // відхилений звіт лишається в черзі
                 }
 
                 localStorage.setItem(OFFLINE_KEY, JSON.stringify(newQueue));
@@ -1377,6 +1455,8 @@
 
                 if (sent && !newQueue.length) {
                     customAlert(`Збережені звіти відправлено: ${sent}`);
+                } else if (needLogin) {
+                    await handleAuthFailure('Увійдіть за PIN, щоб надіслати збережені звіти — вони на місці.');
                 } else if (refused) {
                     customAlert(`Сервер не прийняв ${refused} звіт(ів) із черги: ${lastMsg}\n\nЗвіти залишилися на пристрої.`);
                 }
@@ -1537,10 +1617,11 @@
                 };
 
                 if (!navigator.onLine) { queueIt('Відсутній інтернет.'); return; }
+                if (session && session.offline) { queueIt('Ви увійшли без зв\'язку.'); return; }
 
                 let res = null;
                 try {
-                    res = await api(Object.assign({ token: session && session.token }, payload));
+                    res = await api(Object.assign({ token: sessionToken() }, payload));
                 } catch (e) {
                     console.error(e);
                     queueIt('Не вдалося достукатися до сервера.');
@@ -1563,13 +1644,8 @@
                 status.textContent = '❌ ' + (res.message || res.error || 'Сервер відхилив звіт');
                 status.className = 'mt-2 text-sm text-red-600 font-bold';
 
-                if (res.error === 'auth' || res.error === 'no_session') {
-                    dropSession();
-                    customAlert('Сесія завершилася. Увійдіть за PIN ще раз — заповнене нікуди не зникло.');
-                    await bootAuth();
-                    applySession();
-                } else if (res.error === 'pin_change_required') {
-                    await openChangePin('', true);
+                if (res.error === 'AUTH') {
+                    await handleAuthFailure('Сесія завершилася. Увійдіть за PIN — заповнене нікуди не зникло.');
                 } else {
                     customAlert('Звіт не прийнято: ' + (res.message || res.error || 'невідома помилка') +
                                 '\n\nЗаповнене залишилося у формі — виправте і спробуйте ще раз.');
@@ -1581,9 +1657,7 @@
             });
 
             // Прізвище механіка більше не обирається зі списку — його дає вхід за PIN.
-            const changePinBtn = document.getElementById('changePinBtn');
-            if (changePinBtn) changePinBtn.addEventListener('click', () => openChangePin('', false));
-
+            // Змінити PIN із застосунку не можна: він живе в кадровій таблиці.
             const logoutBtn = document.getElementById('logoutBtn');
             if (logoutBtn) logoutBtn.addEventListener('click', async () => {
                 const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
@@ -1622,6 +1696,12 @@
             
             const contactsBtnHeader = document.getElementById('contactsBtnHeader');
             if(contactsBtnHeader) contactsBtnHeader.addEventListener('click', () => switchView('contacts'));
+
+            onSessionChange = applySession;
+            document.getElementById('authLoginBtn').addEventListener('click', doLogin);
+            document.getElementById('authPin').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') doLogin();
+            });
 
             loadState();
             updateNetworkStatus();

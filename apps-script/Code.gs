@@ -25,7 +25,7 @@ function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) || 'getConfig';
   try {
     if (action === 'getConfig') {
-      var who = e.parameter.token ? authUserByToken_(e.parameter.token) : null;
+      var who = e.parameter.token ? verifySession_(e.parameter.token, e.parameter.device) : null;
       return jsonOut({ ok: true, config: buildClientConfig_(e.parameter.role, who) });
     }
     if (action === 'ping') return jsonOut({ ok: true, version: APP_VERSION, ts: nowIsoUtc() });
@@ -47,13 +47,12 @@ function doPost(e) {
   // логін лише читає, а changePin бере блокування сам, усередині.
   var action = payload.action || 'submit';
   try {
-    if (action === 'login')     return jsonOut(authLogin_(payload.pin, payload.client_id));
-    if (action === 'whoami')    return jsonOut(authWhoami_(payload.token));
-    if (action === 'changePin') return jsonOut(authChangePin_(payload.token, payload.old_pin, payload.new_pin));
-    if (action !== 'submit')    return jsonOut({ ok: false, error: 'unknown action: ' + action });
+    if (action === 'login')  return jsonOut(loginResponse_(loginWithPin_(payload.pin, payload.deviceId)));
+    if (action === 'whoami') return jsonOut(sessionResponse_(verifySession_(payload.token, payload.deviceId)));
+    if (action !== 'submit') return jsonOut({ ok: false, error: 'unknown action: ' + action });
   } catch (err) {
     logEvent('Техніка', 'action.failed', action + ': ' + err, {});
-    return jsonOut({ ok: false, error: String(err) });
+    return jsonOut({ ok: false, error: 'SERVER', message: String(err) });
   }
 
   var result = withLock(function () { return submitReport_(payload); });
@@ -73,7 +72,7 @@ function submitReport_(p) {
     // автора визначає токен, а не поле в payload: інакше будь-хто міг би
     // підписати звіт чужим прізвищем
     p.user_id = auth.user.user_id;
-    p.user_name = auth.user.full_name;
+    p.user_name = auth.user.name;
   }
 
   var problems = validatePayload_(p);
@@ -220,8 +219,37 @@ function normalizeLegacyPayload_(p, dict) {
   };
 }
 
+/** Відповідь клієнтові про сесію: без PIN, без чужих даних, тільки права. */
+function sessionUser_(u) {
+  return {
+    user_id: u.user_id, name: u.name, short_name: u.shortName, roles: u.roles,
+    can: {
+      mech: can_(u, 'submitMech'),
+      master: can_(u, 'submitMaster'),
+      email: can_(u, 'reportEmail') && u.email.indexOf('@') > -1
+    }
+  };
+}
+
+function loginResponse_(r) {
+  if (!r.success) return { ok: false, error: r.code, message: r.error };
+  return {
+    ok: true, token: r.token, expires_at: r.expiresAt,
+    user: sessionUser_({ user_id: r.user_id, name: r.name, shortName: r.shortName,
+                         roles: r.roles, permissions: r.permissions, email: r.email })
+  };
+}
+
+function sessionResponse_(u) {
+  if (!u) return { ok: false, error: 'AUTH', message: 'Сесію завершено. Увійдіть за PIN.' };
+  return { ok: true, user: sessionUser_(u) };
+}
+
 /**
  * Хто це і чи має він право здавати саме цей чек-лист.
+ *
+ * Права перечитуються з кадрової при кожному звіті: звільнення або зміна
+ * ролі діють одразу, не чекаючи, поки скінчиться сесія.
  *
  * Поки AUTH_REQUIRED не «так», звіт без токена приймається — це вікно для
  * телефонів, на яких ще стоїть старий застосунок. Такий звіт помічається
@@ -235,39 +263,32 @@ function authorizeSubmit_(p) {
   var user = null;
   if (p && p.token) {
     try {
-      user = authUserByToken_(p.token);
+      user = verifySession_(p.token, p.deviceId);
     } catch (e) {
-      user = null;   // немає ще аркуша 04_Доступ — поводимося як без токена
+      // кадрова недоступна — у суворому режимі це відмова, інакше працюємо як без токена
+      logEvent('Доступ', 'session.checkFailed', String(e), { report_id: p && p.report_id });
+      if (strict) return { ok: false, error: 'SERVER', message: 'Не вдалося перевірити доступ: ' + e };
     }
   }
 
   if (!user) {
     if (strict) {
       logEvent('Доступ', 'submit.noauth', 'звіт без входу відхилено', { report_id: p && p.report_id });
-      return { ok: false, error: 'auth', message: 'Потрібен вхід за PIN' };
+      return { ok: false, error: 'AUTH', message: 'Сесію завершено. Увійдіть за PIN.' };
     }
     logEvent('Доступ', 'submit.anonymous', 'звіт зі старого клієнта, без входу',
              { report_id: p && p.report_id });
     return { ok: true, user: null };
   }
 
-  if (user.must_change) {
-    return { ok: false, error: 'pin_change_required',
-             message: 'Спочатку замініть тимчасовий PIN на власний' };
-  }
-
-  var wantsMaster = p.role === 'Майстер';
-  if (wantsMaster && !user.can_master) {
-    logEvent('Доступ', 'submit.forbidden', user.full_name + ' → чек-лист майстра',
+  var action = p.role === 'Майстер' ? 'submitMaster' : 'submitMech';
+  if (!can_(user, action)) {
+    logEvent('Доступ', 'access.denied',
+             user.name + ' → ' + action + ', ролі: ' + user.roles.join(', '),
              { user_id: user.user_id });
-    return { ok: false, error: 'forbidden',
-             message: 'Ваша роль не дає права здавати чек-лист майстра' };
-  }
-  if (!wantsMaster && !user.can_mech) {
-    logEvent('Доступ', 'submit.forbidden', user.full_name + ' → чек-лист механіка',
-             { user_id: user.user_id });
-    return { ok: false, error: 'forbidden',
-             message: 'Ваша роль не дає права здавати чек-лист механіка' };
+    return { ok: false, error: 'FORBIDDEN',
+             message: 'Ваша роль не дає права здавати чек-лист ' +
+                      (action === 'submitMaster' ? 'майстра' : 'механіка') };
   }
 
   return { ok: true, user: user };
@@ -354,8 +375,8 @@ function buildClientConfig_(role, who) {
   var allowed = null;
   if (who) {
     allowed = {};
-    if (who.can_mech) allowed['Механік'] = true;
-    if (who.can_master) allowed['Майстер'] = true;
+    if (can_(who, 'submitMech')) allowed['Механік'] = true;
+    if (can_(who, 'submitMaster')) allowed['Майстер'] = true;
   }
   var wantRole = ['Механік', 'Майстер'].indexOf(String(role)) > -1 ? String(role) : '';
 
@@ -387,6 +408,6 @@ function buildClientConfig_(role, who) {
     version: APP_VERSION,
     items: items,
     employees: staff,
-    can: who ? { mech: who.can_mech, master: who.can_master } : null
+    can: who ? { mech: can_(who, 'submitMech'), master: can_(who, 'submitMaster') } : null
   };
 }

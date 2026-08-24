@@ -1,38 +1,62 @@
-/* Підробний Apps Script: віддає index.html і відповідає як новий бекенд. */
+/* Підробний Apps Script: віддає справжній index.html і відповідає як Code.gs.
+   Потрібен, щоб ганяти клієнт у браузері без Google. */
 const http = require('http'), fs = require('fs');
 const PORT = 8731;
-const SRC = '/home/user/mechanic-checklist/index.html';
+const SRC = __dirname + '/../index.html';
 
-const USERS = {
-  '7229': { token: 'T-gora', user: { user_id: 'U-003', name: 'Гора Андрій Олександрович',
-            position: 'Механік зміни', roles: 'mech.use', can: { mech: true, master: false, email: false } },
-            must_change: true },
-  '4821': { token: 'T-gora2', user: { user_id: 'U-003', name: 'Гора Андрій Олександрович',
-            position: 'Механік зміни', roles: 'mech.use', can: { mech: true, master: false, email: false } },
-            must_change: false },
-  '8294': { token: 'T-shuta', user: { user_id: 'U-006', name: 'Шута Олександра Сергіівна',
-            position: 'Майстер зміни', roles: 'shift.master', can: { mech: false, master: true, email: true } },
-            must_change: false }
+// кадрова таблиця в мініатюрі
+const CAN = {
+  mech:   { mech: true,  master: false, email: false },
+  admin:  { mech: true,  master: true,  email: true  },
+  master: { mech: false, master: true,  email: true  }
 };
-const BY_TOKEN = {}; Object.values(USERS).forEach(u => { BY_TOKEN[u.token] = u; });
+const PEOPLE = [
+  { pin: '2468', id: 'EMP-0007', user_id: 'U-003', name: 'Гора Андрій Олександрович',
+    roles: ['mech.use'], can: CAN.mech },
+  { pin: '3773', id: 'EMP-0041', user_id: 'U-002', name: 'Сабадаш Геннадій Петрович',
+    roles: ['mech.use'], can: CAN.mech },
+  { pin: '8294', id: 'EMP-0032', user_id: 'U-006', name: 'Шута Олександра Сергіівна',
+    roles: ['shift.master'], can: CAN.master },
+  { pin: '9988', id: 'EMP-0062', user_id: 'U-000', name: 'Юрій Бузницький',
+    roles: ['admin'], can: CAN.admin },
+  // «1111» стоїть у двох — вхід має відхилятися для обох
+  { pin: '1111', id: 'EMP-0006', user_id: 'U-005', name: 'Гончарук Ольга Михайлівна',
+    roles: ['shift.master'], can: CAN.master },
+  { pin: '1111', id: 'EMP-0018', user_id: '', name: 'Максімюк Анатолій Вікторович',
+    roles: ['shift.master'], can: CAN.master }
+];
 const received = [];
+let fired = {};                     // emp_id → звільнений посеред сесії
+
+const tokenFor = (p, dev) => 'T.' + p.id + '.' + (dev || '');
+const bySession = (token, dev) => {
+  const parts = String(token || '').split('.');
+  if (parts[0] !== 'T' || parts[2] !== (dev || '')) return null;
+  if (fired[parts[1]]) return null;
+  return PEOPLE.find(p => p.id === parts[1]) || null;
+};
+const pub = p => ({ user_id: p.user_id, name: p.name, short_name: p.name, roles: p.roles, can: p.can });
 
 const srv = http.createServer((req, res) => {
   const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' };
   if (req.method === 'OPTIONS') { res.writeHead(204, cors); return res.end(); }
 
   if (req.method === 'GET' && req.url.startsWith('/app')) {
-    let html = fs.readFileSync(SRC, 'utf8')
+    const html = fs.readFileSync(SRC, 'utf8')
       .replace(/const GOOGLE_SCRIPT_URL = '[^']*'/, `const GOOGLE_SCRIPT_URL = 'http://127.0.0.1:${PORT}/exec'`)
-      // Tailwind із CDN у пісочниці недоступний — підміняємо тим мінімумом,
-      // від якого залежить видимість елементів у тестах
-      .replace('<style>', '<style>' + (process.env.TW_CSS ? require('fs').readFileSync(process.env.TW_CSS, 'utf8') : '.hidden{display:none}.flex{display:flex}'));
+      // Tailwind із CDN у пісочниці недоступний — підставляємо або зібраний CSS,
+      // або мінімум, від якого залежить видимість елементів
+      .replace('<style>', '<style>' + (process.env.TW_CSS
+        ? fs.readFileSync(process.env.TW_CSS, 'utf8') : '.hidden{display:none}.flex{display:flex}'));
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     return res.end(html);
   }
   if (req.method === 'GET' && req.url.startsWith('/reset')) {
-    received.length = 0;
-    USERS['7229'].must_change = true;
+    received.length = 0; fired = {};
+    res.writeHead(200, cors); return res.end('ok');
+  }
+  if (req.method === 'GET' && req.url.startsWith('/fire/')) {
+    fired[req.url.split('/')[2]] = true;
     res.writeHead(200, cors); return res.end('ok');
   }
   if (req.method === 'GET' && req.url.startsWith('/received')) {
@@ -49,29 +73,26 @@ const srv = http.createServer((req, res) => {
     const act = p.action || 'submit';
 
     if (act === 'login') {
-      const u = USERS[String(p.pin || '').trim()];
-      if (!u) return json({ ok: false, error: 'bad_pin', message: 'Невірний PIN' });
-      return json({ ok: true, token: u.token, must_change: u.must_change, user: u.user });
+      const hits = PEOPLE.filter(x => x.pin === String(p.pin || '').trim() && !fired[x.id]);
+      if (!hits.length) return json({ ok: false, error: 'BAD_PIN', message: 'Невірний PIN' });
+      if (hits.length > 1) return json({ ok: false, error: 'PIN_NOT_UNIQUE',
+        message: 'Цей PIN закріплений за кількома працівниками. Зверніться до адміністратора, ' +
+                 'щоб вам призначили власний PIN у кадровій таблиці.' });
+      return json({ ok: true, token: tokenFor(hits[0], p.deviceId),
+                    expires_at: Date.now() + 12 * 3600 * 1000, user: pub(hits[0]) });
     }
     if (act === 'whoami') {
-      const u = BY_TOKEN[p.token];
-      if (!u) return json({ ok: false, error: 'no_session' });
-      return json({ ok: true, must_change: u.must_change, user: u.user });
-    }
-    if (act === 'changePin') {
-      const u = BY_TOKEN[p.token];
-      if (!u) return json({ ok: false, error: 'no_session', message: 'Сесія застаріла' });
-      if (!/^\d{4,6}$/.test(String(p.new_pin))) return json({ ok: false, error: 'bad_new_pin', message: 'PIN — від 4 до 6 цифр' });
-      if (String(p.new_pin) === '1111') return json({ ok: false, error: 'weak_pin', message: 'Такий PIN надто простий, оберіть інший' });
-      u.must_change = false;
-      return json({ ok: true, token: u.token, message: 'PIN змінено' });
+      const u = bySession(p.token, p.deviceId);
+      return u ? json({ ok: true, user: pub(u) })
+               : json({ ok: false, error: 'AUTH', message: 'Сесію завершено. Увійдіть за PIN.' });
     }
     if (act === 'submit') {
-      const u = BY_TOKEN[p.token];
-      if (!u) return json({ ok: false, error: 'auth', message: 'Потрібен вхід за PIN' });
-      if (u.must_change) return json({ ok: false, error: 'pin_change_required', message: 'Спочатку замініть тимчасовий PIN' });
-      if (p.role === 'Механік' && !u.user.can.mech) return json({ ok: false, error: 'forbidden', message: 'Ваша роль не дає права' });
-      received.push(p);
+      const u = bySession(p.token, p.deviceId);
+      if (!u) return json({ ok: false, error: 'AUTH', message: 'Сесію завершено. Увійдіть за PIN.' });
+      const need = p.role === 'Майстер' ? 'master' : 'mech';
+      if (!u.can[need]) return json({ ok: false, error: 'FORBIDDEN',
+        message: 'Ваша роль не дає права здавати цей чек-лист' });
+      received.push(Object.assign({}, p, { _author: u.name }));
       return json({ ok: true, report_id: p.report_id, counts: { ok: p.items.length }, warnings: [] });
     }
     json({ ok: false, error: 'unknown action: ' + act });

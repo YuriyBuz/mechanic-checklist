@@ -18,6 +18,12 @@ class Range {
     return this;
   }
   setValue(v) { return this.setValues([[v]]); }
+  // getDisplayValues у Sheets повертає те, що видно: числа як рядки, без
+  // перетворення «0505» на 505. Стаб робить те саме.
+  getDisplayValues() {
+    return this.getValues().map(row => row.map(v =>
+      v === null || v === undefined ? '' : String(v)));
+  }
   clearContent() { return this.setValues(Array.from({ length: this.nr }, () => Array(this.nc).fill(''))); }
   setNumberFormat() { return this; } setFontWeight() { return this; } setBackground() { return this; }
   setVerticalAlignment() { return this; } setDataValidation() { return this; } setNote() { return this; }
@@ -55,6 +61,7 @@ global.Utilities = {
   base64DecodeWebSafe: s => bytes(Buffer.from(String(s), 'base64url')),
   newBlob: b => ({ getDataAsString: () => Buffer.from(b.map(x => x < 0 ? x + 256 : x)).toString('utf8') }),
   getUuid: () => crypto.randomUUID(),
+  sleep: () => {},                                  // у тестах не гальмуємо
   formatDate: (d, tz, f) => new Date(d).toISOString().replace(/\.\d+Z$/, 'Z')
 };
 global.PropertiesService = { getScriptProperties: () => ({

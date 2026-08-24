@@ -1,26 +1,30 @@
+/**
+ * Прогін автентифікації в Node зі стабами Apps Script.
+ * Кадрова таблиця — справжні рядки з «_REF_Employees».
+ */
 const fs = require('fs'), vm = require('vm');
 const { store, Sheet, SS } = require('./gas_stub.js');
 const SRC = __dirname + '/../apps-script/';
 
-// ── кадрова таблиця (справжні рядки, скорочено до потрібних колонок) ──
 const HR_HEAD = ['emp_id','ПІБ повне','ПІБ короткий','прізвище','pos_id','посада','підрозділ',
   'статус','дата прийому','дата звільнення','телефон','дата народження','екстрений: хто',
-  'екстрений: телефон','email','таб_1С','PIN','ролі додатково','ролі відібрані','джерело','оновлено','логін порталу','пароль'];
-const e = (id,name,pos,job,st,mail,pin,extra) => {
-  const r = Array(23).fill('');
-  r[0]=id; r[1]=name; r[4]=pos; r[5]=job; r[7]=st; r[14]=mail; r[16]=pin; r[17]=extra||''; return r;
+  'екстрений: телефон','email','таб_1С','PIN','ролі додатково','ролі відібрані'];
+const e = (id, name, short, pos, job, st, mail, pin, extra, final) => {
+  const r = Array(19).fill('');
+  r[0]=id; r[1]=name; r[2]=short; r[4]=pos; r[5]=job; r[7]=st; r[14]=mail; r[16]=pin;
+  r[17]=extra||''; r[18]=final||''; return r;
 };
 const HR_EMP = [HR_HEAD,
-  e('EMP-0061','Анастасія Диндар','','','active','dyndarnastia@gmail.com','8899','admin'),
-  e('EMP-0001','Бондаренко Валерій Валентинович','POS-010','Оператор-налагоджувальник','active','','1111'),
-  e('EMP-0005','Галагін Євгеній Ярославович','POS-003','Головний інженер','active','','6699'),
-  e('EMP-0006','Гончарук Ольга Михайлівна','POS-004','Майстер зміни','active','','1111'),
-  e('EMP-0007','Гора Андрій Олександрович','POS-005','Механік зміни','active','','1111'),
-  e('EMP-0018','Максімюк Анатолій Вікторович','POS-006','Налагоджувальник','active','','1111'),
-  e('EMP-0041','Сабадаш Геннадій Петрович','POS-005','Механік зміни','active','','3773'),
-  e('EMP-0032','Шута Олександра Сергіівна','POS-004','Майстер зміни','active','','1111'),
-  e('EMP-0062','Юрій Бузницький','','','active','Buznitskiy7@gmail.com','9988','admin'),
-  e('EMP-0049','Свінцов Михайло Генадійович','POS-005','Механік зміни','fired','','')];
+  e('EMP-0061','Анастасія Диндар','Анастасія Д.','','','active','dyndarnastia@gmail.com','8899','admin'),
+  e('EMP-0001','Бондаренко Валерій Валентинович','Бондаренко В. В.','POS-010','Оператор-налагоджувальник','active','','1111'),
+  e('EMP-0005','Галагін Євгеній Ярославович','Галагін Є. Я.','POS-003','Головний інженер','active','','6699'),
+  e('EMP-0006','Гончарук Ольга Михайлівна','Гончарук О. М.','POS-004','Майстер зміни','active','','1111'),
+  e('EMP-0007','Гора Андрій Олександрович','Гора А. О.','POS-005','Механік зміни','active','','1111'),
+  e('EMP-0018','Максімюк Анатолій Вікторович','Максімюк А. В.','POS-006','Налагоджувальник','active','','1111'),
+  e('EMP-0041','Сабадаш Геннадій Петрович','Сабадаш Г. П.','POS-005','Механік зміни','active','','3773'),
+  e('EMP-0032','Шута Олександра Сергіівна','Шута О. С.','POS-004','Майстер зміни','active','','1111'),
+  e('EMP-0062','Юрій Бузницький','Юрій Б.','','','active','Buznitskiy7@gmail.com','9988','admin'),
+  e('EMP-0049','Свінцов Михайло Генадійович','Свінцов М. Г.','POS-005','Механік зміни','fired','','7777')];
 const HR_POS = [['pos_id','назва посади','підрозділ','ролі типові'],
   ['POS-003','Головний інженер','Інженерна','zip.admin mech.admin'],
   ['POS-004','Майстер зміни','Виробництво','shift.master'],
@@ -28,16 +32,16 @@ const HR_POS = [['pos_id','назва посади','підрозділ','рол
   ['POS-006','Налагоджувальник','Інженерна',''],
   ['POS-010','Оператор-налагоджувальник','Виробництво','']];
 
-// ── робоча таблиця ──
 const ITEMS_HEAD = ['item_id','role','group_id','group_title','seq','text','type','fields','unit',
   'labels','visible_on','photo_required','norm_min_1','norm_max_1','warn_min_1','warn_max_1',
   'norm_min_2','norm_max_2','warn_min_2','warn_max_2','norm_min_3','norm_max_3','warn_min_3','warn_max_3',
   'active_from','active_to','text_aliases','notes'];
-const item = (id,role,txt,type) => { const r=Array(28).fill(''); r[0]=id; r[1]=role; r[3]='Група';
-  r[4]=1; r[5]=txt; r[6]=type; r[7]=1; r[10]='both'; return r; };
+const item = (id, role, txt, type) => { const r = Array(28).fill(''); r[0]=id; r[1]=role;
+  r[3]='Група'; r[4]=1; r[5]=txt; r[6]=type; r[7]=1; r[10]='both'; return r; };
+
 const book = new SS('15Pmhi9IvQZAyVbGpPbzTgwN-ETPpRmYSXiDjLkLEnhU', [
   new Sheet('01_Пункти', [ITEMS_HEAD, item('mech.1-1','Механік','Температура компресорів','number'),
-                            item('mast.1-1','Майстер','Стан цеху','binary')]),
+                          item('mast.1-1','Майстер','Стан цеху','binary')]),
   new Sheet('02_Варіанти', [['item_id','seq','value','status','active'], ['mast.1-1',1,'Так','ok','так']]),
   new Sheet('03_Працівники', [['user_id','full_name','role','active','aliases'],
     ['U-001','Галагін Євгеній Ярославович','Механік',true,'Галагін Евгеній'],
@@ -47,7 +51,6 @@ const book = new SS('15Pmhi9IvQZAyVbGpPbzTgwN-ETPpRmYSXiDjLkLEnhU', [
     ['U-005','Гончарук Ольга','Майстер',true,''],
     ['U-006','Шута Олександра','Майстер',true,''],
     ['U-000','(особу не встановлено)','Механік',false,'Заміна']]),
-  new Sheet('04_Доступ', [[]]),
   new Sheet('11_Звіти', [['report_id','ts_server','business_date','stage','role','user_id',
     'user_name_snapshot','config_version','items_total','cnt_ok','cnt_warn','cnt_alert','cnt_empty',
     'photos_saved','photos_failed','source','raw_row','app_version']]),
@@ -60,15 +63,11 @@ const book = new SS('15Pmhi9IvQZAyVbGpPbzTgwN-ETPpRmYSXiDjLkLEnhU', [
   new Sheet('22_Дашборд', [['показник','значення','коментар']])]);
 store.books.active = book;
 store.books['1UhdO9ALcSXk8fgWhUnMiluO4Aao6R4EP6iN4Ie__rY8'] =
-  new SS('hr', [new Sheet('Посади', HR_POS, 1), new Sheet('Працівники', HR_EMP, 755156661)]);
+  new SS('hr', [new Sheet('_REF_Positions', HR_POS, 1), new Sheet('_REF_Employees', HR_EMP, 755156661)]);
 
-// ── завантажуємо .gs у спільну область видимості, як це робить Apps Script ──
 const ctx = vm.createContext(global);
-['Common','Auth','Report','Code'].forEach(f =>
+['Common', 'Auth', 'Report', 'Code'].forEach(f =>
   vm.runInContext(fs.readFileSync(SRC + f + '.gs', 'utf8'), ctx, { filename: f + '.gs' }));
-
-// схема 04_Доступ (беремо заголовок з Auth.gs, без запуску всього setupSchema)
-book.getSheetByName('04_Доступ').getRange(1, 1, 1, ACCESS_COLS.length).setValues([ACCESS_COLS]);
 
 let fails = 0;
 const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails++; };
@@ -78,111 +77,99 @@ const st = authSelfTest();
 console.log(st.split('\n').map(l => '  ' + l).join('\n'));
 if (st.indexOf('❌') > -1) fails++;
 
-console.log('\n── syncAccessFromHr() ──');
-console.log(syncAccessFromHr().split('\n').map(l => '  ' + l).join('\n'));
-
-// дістаємо видані PIN із журналу, щоб продовжити сценарій
-const issued = {};
-store.log.join('\n').split('\n').forEach(l => {
-  const m = /^\s+(\d{4})\s{3}(.+?)\s{3}\(/.exec(l);
-  if (m) issued[m[2].trim()] = m[1];
-});
+console.log('\n── auditPins() ──');
+const audit = auditPins();
+console.log(audit.split('\n').map(l => '  ' + l).join('\n'));
 
 console.log('\n── вхід ──');
-t('невірний PIN не пускає', authLogin_('0007', 'dev1').ok === false);
-t('порожній PIN не пускає', authLogin_('', 'dev1').ok === false);
+t('невірний PIN не пускає', loginWithPin_('0007', 'dev1').code === 'BAD_PIN');
+t('порожній PIN не пускає', loginWithPin_('', 'dev1').code === 'BAD_PIN');
 
-const gora = authLogin_(issued['Гора Андрій Олександрович'], 'dev2');
-t('Гора заходить виданим PIN', gora.ok === true);
-t('  → механік так, майстер ні', gora.user.can.mech === true && gora.user.can.master === false);
-t('  → пошти немає (mech.use)', gora.user.can.email === false);
-t('  → просить змінити PIN', gora.must_change === true);
-t('  → user_id з довідника', gora.user.user_id === 'U-003');
+const dup = loginWithPin_('1111', 'dev2');
+t('спільний «1111» відхилено', dup.code === 'PIN_NOT_UNIQUE');
+t('  і пояснено чому', /кількома працівниками/.test(dup.error));
 
-const sab = authLogin_('3773', 'dev3');
-t('Сабадаш заходить кадровим PIN', sab.ok === true && sab.must_change === false);
-const gal = authLogin_('6699', 'dev4');
-t('Галагін: mech.admin', gal.ok && gal.user.can.mech && !gal.user.can.master);
-const adm = authLogin_('9988', 'dev5');
-t('Бузницький: admin бачить обидва', adm.ok && adm.user.can.mech && adm.user.can.master && adm.user.can.email);
-const mas = authLogin_(issued['Шута Олександра Сергіівна'], 'dev6');
-t('Шута: тільки майстер', mas.ok && mas.user.can.master && !mas.user.can.mech);
-t('Свінцов (звільнений) не має PIN', authLogin_('1111', 'dev7').ok === false);
+const sab = loginWithPin_('3773', 'dev3');
+t('Сабадаш заходить', sab.success === true);
+t('  → механік, без майстра', sab.permissions.indexOf('submitMech') > -1 && sab.permissions.indexOf('submitMaster') === -1);
+t('  → без пошти (mech.use)', sab.permissions.indexOf('reportEmail') === -1);
+t('  → user_id з довідника', sab.user_id === 'U-002');
+t('  → PIN у відповіді немає', JSON.stringify(sab).indexOf('3773') === -1);
+
+const gal = loginWithPin_('6699', 'dev4');
+t('Галагін: mech.admin + пошта', gal.success && gal.permissions.indexOf('reportEmail') > -1
+  && gal.permissions.indexOf('submitMaster') === -1);
+const adm = loginWithPin_('9988', 'dev5');
+t('Бузницький: admin — обидва чек-листи', adm.permissions.length === 3 && adm.user_id === 'U-000');
+t('  (немає в 03_Працівники → U-000, видно в auditPins)', audit.indexOf('⚠ немає в 03_Працівники') > -1);
+t('звільнений не заходить', loginWithPin_('7777', 'dev6').code === 'BAD_PIN');
+t('чужа роль (qc.use) доступу не має', permissionsFor_(['qc.use']).length === 0);
 
 console.log('\n── обмеження спроб ──');
-for (let i = 0; i < 5; i++) authLogin_('0001', 'attacker');
-t('після 5 невдач пристрій у паузі', authLogin_('3773', 'attacker').error === 'throttled');
-t('інший пристрій не постраждав', authLogin_('3773', 'dev3').ok === true);
+for (let i = 0; i < 5; i++) loginWithPin_('0001', 'attacker');
+t('після 5 невдач пристрій у паузі', loginWithPin_('3773', 'attacker').code === 'THROTTLED');
+t('інший пристрій не постраждав', loginWithPin_('3773', 'dev3').success === true);
 
-console.log('\n── зміна PIN ──');
-const oldPin = issued['Гора Андрій Олександрович'];
-t('старий PIN не збігається → відмова',
-  authChangePin_(gora.token, '0000', '4821').error === 'bad_old_pin');
-t('слабкий новий PIN → відмова', authChangePin_(gora.token, oldPin, '1111').error === 'weak_pin');
-t('короткий новий PIN → відмова', authChangePin_(gora.token, oldPin, '12').error === 'bad_new_pin');
-t('чужий PIN зайнятий → відмова', authChangePin_(gora.token, oldPin, '3773').error === 'pin_taken');
-const ch = authChangePin_(gora.token, oldPin, '4821');
-t('зміна проходить', ch.ok === true && !!ch.token);
-t('старий токен більше не діє', authWhoami_(gora.token).ok === false);
-t('новий токен діє', authWhoami_(ch.token).ok === true);
-t('старий PIN більше не пускає', authLogin_(oldPin, 'dev8').ok === false);
-const again = authLogin_('4821', 'dev8');
-t('новий PIN пускає', again.ok === true);
-t('вимога зміни знята', again.must_change === false);
+console.log('\n── сесія ──');
+t('токен діє на своєму пристрої', !!verifySession_(sab.token, 'dev3'));
+t('на чужому пристрої НЕ діє', verifySession_(sab.token, 'dev-чужий') === null);
+t('підроблений підпис відхилено', verifySession_(sab.token.split('.')[0] + '.XX', 'dev3') === null);
+t('права читаються з кадрової, не з токена', verifySession_(sab.token, 'dev3').roles.join() === 'mech.use,zip.use');
+
+// звільнення діє негайно — не чекаючи, поки скінчиться сесія
+const hr = store.books['1UhdO9ALcSXk8fgWhUnMiluO4Aao6R4EP6iN4Ie__rY8'].getSheetByName('_REF_Employees');
+hr.getRange(8, 8).setValue('fired');                  // рядок Сабадаша, колонка H
+t('після звільнення сесія вмирає одразу', verifySession_(sab.token, 'dev3') === null);
+hr.getRange(8, 8).setValue('active');
+t('  і оживає, коли статус повернули', !!verifySession_(sab.token, 'dev3'));
 
 console.log('\n── права на здачу звіту ──');
-const mkPayload = (role, token) => ({
+const mkPayload = (role, token, dev) => ({
   report_id: 'T' + Math.random(), business_date: '2026-08-24', stage: 'Початок зміни', role: role,
-  user_name: 'хто завгодно', token: token,
+  user_name: 'хто завгодно', user_id: 'U-999', token: token, deviceId: dev,
   items: [{ item_id: role === 'Майстер' ? 'mast.1-1' : 'mech.1-1', value: '55', values: ['55'], comment: '' }]
 });
 t('механік не здає чек-лист майстра',
-  submitReport_(mkPayload('Майстер', again.token)).error === 'forbidden');
-const masOk = authChangePin_(mas.token, issued['Шута Олександра Сергіівна'], '5093');
-t('майстер змінив тимчасовий PIN', masOk.ok === true);
-t('майстер не здає чек-лист механіка',
-  submitReport_(mkPayload('Механік', masOk.token)).error === 'forbidden');
-t('майстер здає свій чек-лист',
-  submitReport_(mkPayload('Майстер', masOk.token)).ok === true);
+  submitReport_(mkPayload('Майстер', sab.token, 'dev3')).error === 'FORBIDDEN');
+t('механік здає свій', submitReport_(mkPayload('Механік', sab.token, 'dev3')).ok === true);
 t('адміністратор здає обидва',
-  submitReport_(mkPayload('Механік', adm.token)).ok === true &&
-  submitReport_(mkPayload('Майстер', adm.token)).ok === true);
-const must = authLogin_(issued['Гончарук Ольга Михайлівна'], 'dev9');
-t('з тимчасовим PIN звіт не приймається',
-  submitReport_(mkPayload('Майстер', must.token)).error === 'pin_change_required');
-
-const anon = submitReport_(mkPayload('Механік', ''));
+  submitReport_(mkPayload('Механік', adm.token, 'dev5')).ok === true &&
+  submitReport_(mkPayload('Майстер', adm.token, 'dev5')).ok === true);
+const anon = submitReport_(mkPayload('Механік', '', ''));
 t('без токена приймається, поки AUTH_REQUIRED не «так»', anon.ok === true);
+
 store.props['AUTH_REQUIRED'] = 'так';
-t('з AUTH_REQUIRED=так — відмова', submitReport_(mkPayload('Механік', '')).error === 'auth');
-t('  а з токеном — приймається', submitReport_(mkPayload('Механік', again.token)).ok === true);
+t('з AUTH_REQUIRED=так — відмова', submitReport_(mkPayload('Механік', '', '')).error === 'AUTH');
+t('  а з токеном — приймається', submitReport_(mkPayload('Механік', sab.token, 'dev3')).ok === true);
+t('  токен із чужого пристрою не пише',
+  submitReport_(mkPayload('Механік', sab.token, 'підмінений')).error === 'AUTH');
+t('  прострочений токен не пише',
+  submitReport_(mkPayload('Механік', issueToken_({ id: 'EMP-0041' }, 'dev3', Date.now() - 1000), 'dev3')).error === 'AUTH');
 store.props['AUTH_REQUIRED'] = 'ні';
 
 console.log('\n── автора підмінити не можна ──');
 const rep = readTable('11_Звіти');
-const mine = rep.rows.filter(r => r[5] === 'U-003');
-t('звіт підписано Горою, а не «хто завгодно»',
-  mine.length > 0 && mine.every(r => r[6] === 'Гора Андрій Олександрович'));
+const mine = rep.rows.filter(r => r[5] === 'U-002');
+t('звіт підписано Сабадашем, а не «хто завгодно»',
+  mine.length > 0 && mine.every(r => r[6] === 'Сабадаш Геннадій Петрович'));
 
 console.log('\n── одержувачі листа ──');
-t('mech.use → тільки MAIL_TO', JSON.stringify(recipientsFor_(authUserByToken_(again.token))) === '[]');
 store.props['MAIL_TO'] = 'engineer@example.com';
-t('mech.use → пошта не додається',
-  recipientsFor_(authUserByToken_(again.token)).join() === 'engineer@example.com');
+t('mech.use → пошта автора не додається',
+  recipientsFor_(verifySession_(sab.token, 'dev3')).join() === 'engineer@example.com');
 t('admin → додається власна пошта',
-  recipientsFor_(authUserByToken_(adm.token)).join() === 'engineer@example.com,Buznitskiy7@gmail.com');
+  recipientsFor_(verifySession_(adm.token, 'dev5')).join() === 'engineer@example.com,Buznitskiy7@gmail.com');
 store.props['MAIL_TO'] = 'engineer@example.com,buznitskiy7@gmail.com';
-t('дубль пошти не додається',
-  recipientsFor_(authUserByToken_(adm.token)).length === 2);
+t('дубль пошти не додається', recipientsFor_(verifySession_(adm.token, 'dev5')).length === 2);
 
-console.log('\n── повторна синхронізація нічого не ламає ──');
-const before = readTable('04_Доступ').rows.map(r => r.join('|'));
-syncAccessFromHr();
-const after = readTable('04_Доступ').rows.map(r => r.join('|'));
-t('кількість рядків не змінилась', before.length === after.length);
-t('зміна PIN пережила синхронізацію', authLogin_('4821', 'dev10').ok === true);
-t('видані PIN не перевидано', authLogin_('5093', 'dev11').ok === true);
-t('однакових PIN немає', authStatus().indexOf('✅ Однакових PIN немає') > -1);
+console.log('\n── відповідь клієнтові ──');
+const lr = loginResponse_(loginWithPin_('9988', 'dev5'));
+t('login → ok + права', lr.ok && lr.user.can.mech && lr.user.can.master && lr.user.can.email);
+t('  без PIN і без списку працівників',
+  JSON.stringify(lr).indexOf('9988') === -1 && JSON.stringify(lr).indexOf('Сабадаш') === -1);
+const lr2 = loginResponse_(loginWithPin_('1111', 'dev9'));
+t('дубль → зрозуміла відмова', !lr2.ok && lr2.error === 'PIN_NOT_UNIQUE' && !!lr2.message);
+t('whoami без сесії → AUTH', sessionResponse_(null).error === 'AUTH');
 
 console.log('\n' + (fails ? '❌ ПОМИЛОК: ' + fails : '✅ Усі перевірки пройдено'));
 process.exit(fails ? 1 : 0);

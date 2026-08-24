@@ -11,7 +11,6 @@ var SH = {
   ITEMS:     '01_Пункти',
   OPTIONS:   '02_Варіанти',
   EMPLOYEES: '03_Працівники',
-  ACCESS:    '04_Доступ',
   REPORTS:   '11_Звіти',
   ANSWERS:   '12_Відповіді',
   PHOTOS:    '13_Фото',

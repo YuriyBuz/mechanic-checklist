@@ -42,18 +42,6 @@ function schemaDefs_() {
       note: 'aliases — історичні написання ПІБ через «;». Саме вони зшивають старі звіти.'
     },
     {
-      name: SH.ACCESS,
-      header: ACCESS_COLS,
-      widths: { full_name: 280, email: 240, position: 200, roles: 200, pin_hash: 120, note: 300 },
-      text: ['emp_id', 'user_id', 'email', 'roles', 'pin_hash', 'pin_updated', 'hr_synced'],
-      validation: { can_mech: ['так', 'ні'], can_master: ['так', 'ні'], can_email: ['так', 'ні'],
-                    active: ['так', 'ні'], must_change: ['так', 'ні'],
-                    pin_source: ['кадрова', 'користувач', 'адмін', 'згенеровано'] },
-      note: 'Доступ до застосунку. Заповнює syncAccessFromHr() із кадрової таблиці.\n' +
-            'pin_hash — НЕ PIN, а його незворотний хеш. Самого PIN немає ніде.\n' +
-            'active=ні закриває вхід, не чіпаючи кадрову.'
-    },
-    {
       name: SH.REPORTS,
       header: ['report_id', 'ts_server', 'business_date', 'stage', 'role', 'user_id',
                'user_name_snapshot', 'config_version', 'items_total',

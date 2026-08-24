@@ -56,7 +56,7 @@ function preflight() {
         : (typeof SCHEMA !== 'undefined' ? 'СТАРА версія — замініть файл!' : 'ВІДСУТНІЙ')));
   say(typeof migrateLegacy === 'function', 'Migrate.gs ' + (typeof migrateLegacy === 'function' ? 'на місці' : 'ВІДСУТНІЙ'));
   say(typeof sendReportEmail_ === 'function', 'Report.gs ' + (typeof sendReportEmail_ === 'function' ? 'на місці' : 'ВІДСУТНІЙ'));
-  say(typeof syncAccessFromHr === 'function', 'Auth.gs ' + (typeof syncAccessFromHr === 'function' ? 'на місці' : 'ВІДСУТНІЙ'));
+  say(typeof loginWithPin_ === 'function', 'Auth.gs ' + (typeof loginWithPin_ === 'function' ? 'на місці' : 'ВІДСУТНІЙ'));
 
   // --- 3. КОНФЛІКТ ІМЕН: чий doPost переміг ---
   if (typeof doPost !== 'function') {
@@ -82,10 +82,16 @@ function preflight() {
   out.push('·  AUTH_REQUIRED: ' + (['так', 'yes', 'true', '1'].indexOf(authReq) > -1
     ? 'так — звіт без входу за PIN відхиляється'
     : 'ні — старий застосунок без входу ще приймається (перехідний період)'));
-  say(!!props.getProperty('PIN_PEPPER'),
-      'PIN_PEPPER: ' + (props.getProperty('PIN_PEPPER')
-        ? 'створено (не видаляйте — від нього залежать усі PIN)'
-        : 'ще не створено, з\'явиться при першому syncAccessFromHr()'));
+  say(!!props.getProperty('AUTH_SECRET'),
+      'AUTH_SECRET: ' + (props.getProperty('AUTH_SECRET')
+        ? 'створено' : 'ще не створено, з\'явиться при першому вході'));
+  try {
+    var emp = readEmployees_().filter(function (x) { return x.eligible; });
+    say(emp.length > 0, 'Кадрова таблиця: доступ до чек-листа мають ' + emp.length +
+        ' працівників (подробиці — auditPins())');
+  } catch (e) {
+    say(false, 'Кадрова таблиця НЕдоступна: ' + e);
+  }
 
   // --- 5. що вже є в таблиці ---
   var names = ss_.getSheets().map(function (s) { return s.getName(); });
@@ -102,7 +108,7 @@ function preflight() {
     say(n > 0, 'Лист1: ' + vals.length + ' рядків, з них звітів ' + n + ' (очікується 352)');
   }
 
-  ['01_Пункти', '02_Варіанти', '03_Працівники', '04_Доступ',
+  ['01_Пункти', '02_Варіанти', '03_Працівники',
    '11_Звіти', '12_Відповіді', '13_Фото'].forEach(function (nm) {
     var s = ss_.getSheetByName(nm);
     if (!s) { out.push('·  ' + nm + ': ще не створено'); return; }

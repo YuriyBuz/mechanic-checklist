@@ -23,7 +23,7 @@ function recipients_(key) {
  */
 function recipientsFor_(authUser) {
   var to = recipients_('MAIL_TO');
-  if (authUser && authUser.can_email && authUser.email) {
+  if (authUser && can_(authUser, 'reportEmail') && authUser.email) {
     var own = String(authUser.email).trim();
     var has = to.some(function (a) { return a.toLowerCase() === own.toLowerCase(); });
     if (!has) to.push(own);
