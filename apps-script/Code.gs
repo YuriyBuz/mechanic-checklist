@@ -99,17 +99,21 @@ function submitReport_(p) {
 
   (p.items || []).forEach(function (it, i) {
     var item = dict.byId[it.item_id];
-    var nums = (it.values || []).map(toNumber).filter(function (n) { return n !== null; });
+    // позиція у values = номер поля: values[0] звіряється з norm_*_1 і так далі.
+    // Порожнє поле лишається null НА СВОЄМУ МІСЦІ — інакше значення другого
+    // датчика перевірялося б за нормою першого.
+    var nums = (it.values || []).slice(0, 3).map(toNumber);
+    var filled = nums.filter(function (n) { return n !== null; });
     var status;
     if (!item) {
       status = 'unknown';
-    } else if (it.value === '' && !nums.length) {
+    } else if (it.value === '' && !filled.length) {
       status = 'empty';
     } else if (item.type === 'binary') {
       status = dict.optStatus[it.item_id + '|' + String(it.value).trim()] || 'unknown';
     } else if (item.type === 'number') {
-      status = nums.length ? worstStatus(nums.map(function (v, f) {
-        return numberStatus_(item, f + 1, v);
+      status = filled.length ? worstStatus(nums.map(function (v, f) {
+        return v === null ? 'ok' : numberStatus_(item, f + 1, v);
       })) : 'empty';
     } else {
       status = it.value ? 'ok' : 'empty';
@@ -117,12 +121,12 @@ function submitReport_(p) {
     cnt[status] = (cnt[status] || 0) + 1;
     if (status === 'alert' || status === 'warn') {
       alerts.push({ status: status, text: item ? item.text : it.item_id,
-                    value: it.value || nums.join(' / '), comment: it.comment || '' });
+                    value: it.value || filled.join(' / '), comment: it.comment || '' });
     }
     emailItems.push({
       group: item ? item.group_title : 'Інше',
       text: item ? item.text : (it.legacy_text || it.item_id),
-      value: it.value || nums.join(' / '),
+      value: it.value || filled.join(' / '),
       status: status,
       comment: it.comment || '',
       item_id: it.item_id

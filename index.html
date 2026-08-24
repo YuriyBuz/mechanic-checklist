@@ -234,6 +234,10 @@
             <select id="employeeSelect" class="block w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 card text-muted">
                 <option value="">Оберіть зі списку</option>
             </select>
+            <div class="flex justify-end gap-4 mt-2">
+                <button id="changePinBtn" class="text-xs font-semibold text-muted hover:text-emerald-600 transition-colors">Змінити PIN</button>
+                <button id="logoutBtn" class="text-xs font-semibold text-muted hover:text-emerald-600 transition-colors">Вийти</button>
+            </div>
         </div>
 
         <nav class="flex justify-center items-center mb-6 card p-2 rounded-xl shadow-sm gap-2">
@@ -279,6 +283,39 @@
         </div>
     </div>
 
+    <div id="authOverlay" class="fixed inset-0 hidden items-center justify-center modal-overlay z-[2500] p-4">
+        <div class="card p-6 rounded-2xl shadow-xl w-full max-w-sm text-center">
+            <img src="https://foodline-production.com/wp-content/uploads/2021/10/3752781497_3752781497.webp" alt="Foodline Production Logo" class="w-20 h-auto mx-auto mb-4 rounded-lg">
+
+            <div id="authLoginPane">
+                <h3 class="text-xl font-bold mb-1">Вхід за PIN</h3>
+                <p class="text-muted text-sm mb-4">Особистий код працівника</p>
+                <input id="authPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8"
+                       class="block w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg text-center text-2xl tracking-[0.5em] font-bold card focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                       placeholder="••••">
+                <button id="authLoginBtn" class="mt-4 w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-colors">Увійти</button>
+            </div>
+
+            <div id="authChangePane" class="hidden">
+                <h3 class="text-xl font-bold mb-1">Новий PIN</h3>
+                <p id="authChangeHint" class="text-muted text-sm mb-4">Придумайте власний код: 4–6 цифр</p>
+                <input id="authOldPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8"
+                       class="block w-full p-3 mb-2 border border-gray-300 dark:border-slate-600 rounded-lg text-center text-lg font-bold card focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                       placeholder="Поточний PIN">
+                <input id="authNewPin" type="password" inputmode="numeric" autocomplete="off" maxlength="6"
+                       class="block w-full p-3 mb-2 border border-gray-300 dark:border-slate-600 rounded-lg text-center text-lg font-bold card focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                       placeholder="Новий PIN">
+                <input id="authNewPin2" type="password" inputmode="numeric" autocomplete="off" maxlength="6"
+                       class="block w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg text-center text-lg font-bold card focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                       placeholder="Повторіть новий PIN">
+                <button id="authChangeBtn" class="mt-4 w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-colors">Зберегти PIN</button>
+                <button id="authChangeCancel" class="mt-2 w-full py-2 text-muted text-sm font-semibold hidden">Скасувати</button>
+            </div>
+
+            <p id="authError" class="mt-3 text-sm font-bold text-red-600 hidden"></p>
+        </div>
+    </div>
+
     <canvas id="compressionCanvas" class="hidden"></canvas>
 
     <script>
@@ -315,7 +352,7 @@
                     { id: '3-1', text: 'Провести зовнішній візуальний огляд генератора.', type: 'binary', options: ['Оглянуто', 'Зауваження'], visibleOn: 'all' },
                     { id: '3-2', text: 'Переконатися у відсутності сторонніх шумів під час роботи.', type: 'binary', options: ['Норма', 'Сторонній шум', 'Генератор не запущений'], visibleOn: 'all' },
                     { id: '3-3', text: 'Перевірити рівень вібрації корпусу та вузлів.', type: 'binary', options: ['Норма', 'Вібрація', 'Генератор не запущений'], visibleOn: 'all' },
-                    { id: '3-4', text: 'Зробити фото інформаційного табло генератора.', type: 'input', unit: 'Внести номер помилки/ОК', photoRequired: true, visibleOn: 'all' }
+                    { id: '3-4', text: 'Зробити фото інформаційного табло генератора.', type: 'binary', options: ['Помилок немає', 'Є помилка'], photoRequired: true, visibleOn: 'all' }
                 ]
             },
             {
@@ -335,7 +372,7 @@
                 id: 'fridge',
                 title: '5. Холодильний контейнер',
                 items: [
-                    { id: '5-1', text: 'Зіставити поточну температуру всередині з установленим режимом.', type: 'input', unit: '°C', visibleOn: 'all' },
+                    { id: '5-1', text: 'Зіставити поточну температуру всередині з установленим режимом.', type: 'triple_input', labels: ['Точка 1', 'Точка 2', 'Точка 3'], unit: '°C', visibleOn: 'all' },
                     // Оновлене питання (обов'язкове фото)
                     { id: '5-2', text: 'Зробити фото інформаційного табло контролера.', type: 'input', unit: 'Внести номер помилки/ОК', photoRequired: true, visibleOn: 'all' },
                     { id: '5-3', text: 'Оглянути ущільнювачі дверей на цілісність та відсутність обмерзання.', type: 'binary', options: ['Цілі', 'Пошкоджені'], visibleOn: 'all' },
@@ -389,7 +426,7 @@
                 title: '7. ХВО (Хімічне водоочищення)',
                 items: [
                     { id: '7-1', text: 'Тиск води (вхід/вихід)', type: 'dual_input', labels: ['Вхід', 'Вихід'], unit: 'бар', visibleOn: 'all' },
-                    { id: '7-2', text: 'Проконтролювати робочий тиск повітря і зробити фото панелі з ротаметром.', type: 'input', unit: 'бар', photoLabel: 'Фото', photoRequired: true, visibleOn: 'all' },
+                    { id: '7-2', text: 'Проконтролювати робочий тиск повітря і зробити фото панелі з ротаметром.', type: 'input', unit: 'бар', numeric: true, photoLabel: 'Фото', photoRequired: true, visibleOn: 'all' },
                     { id: '7-3', text: 'Переконатися у відсутності помилок процесу регенерації.', type: 'binary', options: ['Немає', 'Є помилка'], visibleOn: 'all' },
                     { id: '7-4', text: 'Перевірити рівень солі та води в ємностях.', type: 'binary', options: ['Норма', 'Низький'], visibleOn: 'all' },
                     { id: '7-5', text: 'Оглянути всі вузли системи (цілісність).', type: 'binary', options: ['Цілі', 'Пошкоджені'], visibleOn: 'all' },
@@ -467,7 +504,184 @@
             }
         };
 
-        document.addEventListener('DOMContentLoaded', () => {
+        /* ────────────────────────── ВХІД ЗА PIN ──────────────────────────
+           Логін — сам PIN, без вибору прізвища: у довіднику доступу вони
+           унікальні. Прізвище механіка більше не обирається зі списку —
+           воно береться з того, хто увійшов, і саме воно потрапляє у звіт.
+
+           Токен зберігається на цьому пристрої. Сервер гасить його, щойно
+           працівник змінить PIN, тож чужий телефон із давньою сесією
+           перестає працювати одразу після зміни коду.                     */
+
+        const APP_VERSION    = 'checklist-client-2026-08-24';
+        const CONFIG_VERSION = 'client-2026-08-24';
+        const SESSION_KEY    = 'checklistSession_v1';
+        const DEVICE_KEY     = 'checklistDeviceId';
+        let session = null;
+
+        const deviceId = () => {
+            let d = localStorage.getItem(DEVICE_KEY);
+            if (!d) {
+                d = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+                    : String(Date.now()) + Math.random().toString(16).slice(2);
+                localStorage.setItem(DEVICE_KEY, d);
+            }
+            return d;
+        };
+
+        /* Свій Content-Type НЕ ставимо: тоді браузер шле text/plain, preflight
+           не виникає — і відповідь можна прочитати. Саме через це старий
+           клієнт із mode:'no-cors' ніколи не знав, чи звіт узагалі дійшов. */
+        const api = async (payload) => {
+            const res = await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                redirect: 'follow',
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        };
+
+        const saveSession = () => {
+            try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {}
+        };
+        const dropSession = () => {
+            session = null;
+            try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+        };
+
+        const setAuthError = (msg) => {
+            const el = document.getElementById('authError');
+            el.textContent = msg || '';
+            el.classList.toggle('hidden', !msg);
+        };
+
+        const showAuthPane = (which) => {
+            document.getElementById('authLoginPane').classList.toggle('hidden', which !== 'login');
+            document.getElementById('authChangePane').classList.toggle('hidden', which !== 'change');
+            setAuthError('');
+        };
+
+        const openAuthOverlay = () => {
+            const o = document.getElementById('authOverlay');
+            o.classList.remove('hidden');
+            o.classList.add('flex');
+        };
+        const closeAuthOverlay = () => {
+            const o = document.getElementById('authOverlay');
+            o.classList.add('hidden');
+            o.classList.remove('flex');
+            ['authPin', 'authOldPin', 'authNewPin', 'authNewPin2']
+                .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        };
+
+        /* Зміна PIN. forced=true — це тимчасовий код, виданий адміністратором:
+           скасувати не можна, інакше ним і далі можна було б користуватися. */
+        const openChangePin = (oldPin, forced) => new Promise((resolve) => {
+            openAuthOverlay();
+            showAuthPane('change');
+            const o    = document.getElementById('authOldPin');
+            const n1   = document.getElementById('authNewPin');
+            const n2   = document.getElementById('authNewPin2');
+            const btn  = document.getElementById('authChangeBtn');
+            const skip = document.getElementById('authChangeCancel');
+
+            o.value = oldPin || ''; n1.value = ''; n2.value = '';
+            document.getElementById('authChangeHint').textContent = forced
+                ? 'Тимчасовий код треба замінити на власний: 4–6 цифр'
+                : 'Придумайте власний код: 4–6 цифр';
+            skip.classList.toggle('hidden', !!forced);
+            setTimeout(() => (oldPin ? n1 : o).focus(), 100);
+
+            const save = async () => {
+                setAuthError('');
+                if (n1.value.trim() !== n2.value.trim()) { setAuthError('Новий PIN уведено двічі по-різному'); return; }
+                if (!/^\d{4,6}$/.test(n1.value.trim())) { setAuthError('PIN — від 4 до 6 цифр'); return; }
+                btn.disabled = true; btn.textContent = 'Збереження…';
+                let r = null;
+                try {
+                    r = await api({ action: 'changePin', token: session && session.token,
+                                    old_pin: o.value.trim(), new_pin: n1.value.trim() });
+                } catch (e) { r = null; }
+                btn.disabled = false; btn.textContent = 'Зберегти PIN';
+                if (!r) { setAuthError('Немає зв\'язку із сервером'); return; }
+                if (!r.ok) { setAuthError(r.message || 'Не вдалося змінити PIN'); return; }
+                session.token = r.token;
+                session.must_change = false;
+                saveSession();
+                closeAuthOverlay();
+                customAlert('PIN змінено. Наступного разу заходьте новим кодом.');
+                resolve(true);
+            };
+
+            btn.onclick = save;
+            [o, n1, n2].forEach(el => { el.onkeydown = e => { if (e.key === 'Enter') save(); }; });
+            skip.onclick = () => { closeAuthOverlay(); resolve(false); };
+        });
+
+        const waitForLogin = () => new Promise((resolve) => {
+            openAuthOverlay();
+            showAuthPane('login');
+            const pin = document.getElementById('authPin');
+            const btn = document.getElementById('authLoginBtn');
+            setTimeout(() => pin.focus(), 100);
+
+            const tryLogin = async () => {
+                const v = pin.value.trim();
+                if (!v) { setAuthError('Введіть PIN'); return; }
+                setAuthError('');
+                btn.disabled = true; btn.textContent = 'Перевірка…';
+                let r = null;
+                try { r = await api({ action: 'login', pin: v, client_id: deviceId() }); }
+                catch (e) { r = null; }
+                btn.disabled = false; btn.textContent = 'Увійти';
+                pin.value = '';
+
+                if (!r) { setAuthError('Немає зв\'язку із сервером. Перевірте інтернет.'); return; }
+                if (!r.ok) { setAuthError(r.message || 'Невірний PIN'); return; }
+                if (!r.user.can.mech) {
+                    setAuthError('Ваша роль не дає доступу до чек-листа механіка');
+                    return;
+                }
+                session = { token: r.token, user: r.user, must_change: !!r.must_change };
+                saveSession();
+                if (r.must_change) { await openChangePin(v, true); }
+                closeAuthOverlay();
+                resolve();
+            };
+
+            btn.onclick = tryLogin;
+            pin.onkeydown = e => { if (e.key === 'Enter') tryLogin(); };
+        });
+
+        /* Повертає, коли на пристрої є дійсна сесія механіка.
+           Без мережі покладаємося на збережений профіль — інакше зміну,
+           яку здають у цеху без зв'язку, не було б де заповнити. */
+        const bootAuth = async () => {
+            try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }
+            catch (e) { session = null; }
+
+            if (session && session.token) {
+                let r = null;
+                try { r = await api({ action: 'whoami', token: session.token }); }
+                catch (e) { r = null; }
+
+                if (r && r.ok) {
+                    session = { token: session.token, user: r.user, must_change: !!r.must_change };
+                    saveSession();
+                    if (session.must_change) { await openChangePin('', true); }
+                    if (session.user.can.mech) { closeAuthOverlay(); return; }
+                    dropSession();
+                } else if (r) {
+                    dropSession();          // сервер сказав, що сесії немає
+                } else if (session.user && session.user.can && session.user.can.mech && !session.must_change) {
+                    return;                 // зв'язку немає — працюємо офлайн
+                }
+            }
+            return waitForLogin();
+        };
+
+        document.addEventListener('DOMContentLoaded', async () => {
             updateClock();
             setInterval(updateClock, 60000);
 
@@ -525,8 +739,109 @@
             let currentSection = 'start';
             let currentPhotos = {}; 
             let appState = {};
+            let photoBusy = 0;
             const STORAGE_KEY = 'shiftChecklistState_v3';
             const OFFLINE_KEY = 'offlineReportsQueue';
+
+            /** Поля числових пунктів по порядку: data-input-1, -2, -3. */
+            const fieldInputs = (el) => Array.from(el.querySelectorAll('[data-input-1], [data-input-2], [data-input-3]'));
+
+            const findConfigItem = (configId) => {
+                for (const g of checklistConfig) {
+                    const f = g.items.find(i => i.id === configId);
+                    if (f) return f;
+                }
+                return null;
+            };
+
+            /* Дата зміни — за Києвом, а не за годинником телефона. Механік,
+               який здає кінець зміни о 00:30, має потрапити у той самий день,
+               що й початок, і в тому ж часовому поясі, що й таблиця. */
+            const kyivDate = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Kyiv' }).format(new Date());
+
+            /* Ідентифікатор звіту робиться ОДИН раз і подорожує разом зі звітом
+               у черзі. Повторна відправка того самого id сервер відкидає як
+               дубль — тому мережевий збій більше не множить звіти. */
+            const makeReportId = (bizDate, stage) => {
+                const st = stage === 'Кінець зміни' ? 'end' : 'start';
+                let rnd = '';
+                if (window.crypto && crypto.getRandomValues) {
+                    rnd = Array.from(crypto.getRandomValues(new Uint8Array(3)))
+                        .map(b => b.toString(16).padStart(2, '0')).join('');
+                } else {
+                    rnd = Math.random().toString(16).slice(2, 8);
+                }
+                return `${bizDate}_mech_${st}_${rnd}`;
+            };
+
+            /* Числа йдуть окремим масивом, позиція = номер поля: values[0]
+               звіряється з нормою першого датчика, values[1] — другого.
+               Порожнє поле лишається порожнім рядком на своєму місці. */
+            const readItemValue = (el, cfg) => {
+                const type = el.dataset.type;
+                if (type === 'dual_input' || type === 'triple_input') {
+                    return { value: el.dataset.value || '', values: fieldInputs(el).map(i => i.value.trim()) };
+                }
+                if (type === 'input') {
+                    const inp = el.querySelector('[data-input]');
+                    const raw = inp ? inp.value.trim() : (el.dataset.value || '');
+                    return { value: raw, values: (cfg && cfg.numeric && raw) ? [raw] : [] };
+                }
+                return { value: el.dataset.value || '', values: [] };
+            };
+
+            const buildPayload = (section) => {
+                const stage = (section === 'start') ? 'Початок зміни' : 'Кінець зміни';
+                const bizDate = kyivDate();
+                const els = Array.from(document.querySelectorAll(`#${section}ShiftSection .checklist-item`));
+                const done = els.filter(e => e.classList.contains('completed')).length;
+
+                return {
+                    action: 'submit',
+                    report_id: makeReportId(bizDate, stage),
+                    business_date: bizDate,
+                    stage: stage,
+                    role: 'Механік',
+                    user_id: (session && session.user) ? session.user.user_id : '',
+                    user_name: employeeSelect.value,
+                    config_version: CONFIG_VERSION,
+                    app_version: APP_VERSION,
+                    summary: `Виконано ${done} з ${els.length}`,
+                    items: els.map(el => {
+                        const configId = el.id.replace(`${section}-`, '');
+                        const v = readItemValue(el, findConfigItem(configId));
+                        return {
+                            item_id: 'mech.' + configId,
+                            value: v.value,
+                            values: v.values,
+                            comment: el.querySelector('.comment-text').textContent.trim(),
+                            photoData: currentPhotos[el.id] || null
+                        };
+                    })
+                };
+            };
+
+            /** Хто увійшов — той і підписує звіт. Список прізвищ більше не потрібен. */
+            const applySession = () => {
+                if (!employeeSelect || !session || !session.user) return;
+                employeeSelect.innerHTML = '';
+                employeeSelect.add(new Option(session.user.name, session.user.name));
+                employeeSelect.value = session.user.name;
+                employeeSelect.disabled = true;
+            };
+
+            /* Стиснення фото триває помітно довго. Поки воно йде, у підвалі
+               видно «Обробка фото», а відправка блокується — інакше звіт піде
+               без щойно зробленого знімка. */
+            const setPhotoBusy = (delta) => {
+                photoBusy = Math.max(0, photoBusy + delta);
+                if (photoBusy > 0) {
+                    document.getElementById('currentStatus').textContent =
+                        photoBusy === 1 ? 'Обробка фото…' : `Обробка фото… (${photoBusy})`;
+                } else {
+                    updateProgress();
+                }
+            };
 
             const renderChecklist = (sectionId) => {
                 checklistContainer.innerHTML = '';
@@ -629,6 +944,18 @@
                                     ${photoHtml}
                                 </div>
                             `;
+                        } else if (item.type === 'triple_input') {
+                            controlsHtml = `
+                                <div class="mt-2 flex items-center gap-2 controls-area">
+                                    <div class="flex flex-1 gap-2">
+                                        ${item.labels.map((lb, i) => `
+                                        <div class="relative w-1/3">
+                                            <input type="text" inputmode="text" class="p-2 rounded w-full text-center font-bold h-10 border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700" placeholder="${lb}" data-input-${i + 1}>
+                                        </div>`).join('')}
+                                    </div>
+                                    ${photoHtml}
+                                </div>
+                            `;
                         }
 
                         li.innerHTML = `
@@ -693,7 +1020,11 @@
                 if (input.files && input.files[0]) {
                     const file = input.files[0];
                     const reader = new FileReader();
-                    
+                    setPhotoBusy(1);
+                    reader.onerror = function () {
+                        setPhotoBusy(-1);
+                        customAlert('Не вдалося прочитати фото. Спробуйте зняти ще раз.');
+                    };
                     reader.onload = function(e) {
                         const img = new Image();
                         img.onload = function() {
@@ -719,6 +1050,11 @@
                             thumb.classList.add('show');
                             item.querySelector('.photo-btn').classList.add('has-photo');
                             item.classList.remove('error-highlight');
+                            setPhotoBusy(-1);
+                        };
+                        img.onerror = function () {
+                            setPhotoBusy(-1);
+                            customAlert('Файл не схожий на зображення.');
                         };
                         img.src = e.target.result;
                     };
@@ -799,21 +1135,17 @@
                              saveState();
                              updateProgress();
                         });
-                    } else if (type === 'dual_input') {
-                        const input1 = item.querySelector('[data-input-1]');
-                        const input2 = item.querySelector('[data-input-2]');
-                        
-                        const handleDualChange = () => {
-                            if (!employeeSelect.value) { input1.blur(); input2.blur(); customAlert("Спочатку оберіть механіка!"); return; }
-                            const v1 = input1.value.trim();
-                            const v2 = input2.value.trim();
-                            
-                            if (v1 || v2) {
+                    } else if (type === 'dual_input' || type === 'triple_input') {
+                        const inputs = fieldInputs(item);
+
+                        const handleMultiChange = () => {
+                            if (!employeeSelect.value) { inputs.forEach(i => i.blur()); customAlert("Спочатку оберіть механіка!"); return; }
+                            const vals = inputs.map(i => i.value.trim());
+
+                            if (vals.some(v => v)) {
                                 item.classList.add('completed');
                                 item.classList.remove('error-highlight');
-                                const label1 = input1.placeholder;
-                                const label2 = input2.placeholder;
-                                const displayStr = `${label1}: ${v1 || '-'} / ${label2}: ${v2 || '-'}`;
+                                const displayStr = inputs.map((i, k) => `${i.placeholder}: ${vals[k] || '-'}`).join(' / ');
                                 item.dataset.value = displayStr;
                                 item.querySelector('.print-value').textContent = displayStr;
                             } else {
@@ -825,8 +1157,7 @@
                             updateProgress();
                         };
 
-                        input1.addEventListener('input', handleDualChange);
-                        input2.addEventListener('input', handleDualChange);
+                        inputs.forEach(i => i.addEventListener('input', handleMultiChange));
                     }
                 });
             };
@@ -912,16 +1243,12 @@
                                 const inp = el.querySelector('input');
                                 if(inp) inp.value = data.value;
                                 el.querySelector('.print-value').textContent = `Значення: ${data.value}`;
-                            } else if (el.dataset.type === 'dual_input') {
+                            } else if (el.dataset.type === 'dual_input' || el.dataset.type === 'triple_input') {
                                 const parts = data.value.split(' / ');
-                                if(parts.length === 2) {
-                                    const v1 = parts[0].split(': ')[1];
-                                    const v2 = parts[1].split(': ')[1];
-                                    const i1 = el.querySelector('[data-input-1]');
-                                    const i2 = el.querySelector('[data-input-2]');
-                                    if(i1) i1.value = v1 === '-' ? '' : v1;
-                                    if(i2) i2.value = v2 === '-' ? '' : v2;
-                                }
+                                fieldInputs(el).forEach((inp, k) => {
+                                    const raw = parts[k] ? parts[k].split(': ')[1] : '';
+                                    inp.value = (raw === undefined || raw === '-') ? '' : raw;
+                                });
                                 el.querySelector('.print-value').textContent = data.value;
                             }
                         }
@@ -972,11 +1299,8 @@
                     } else if(item.dataset.type === 'input') {
                         const i = item.querySelector('input');
                         if(i) i.value = '';
-                    } else if(item.dataset.type === 'dual_input') {
-                        const i1 = item.querySelector('[data-input-1]');
-                        const i2 = item.querySelector('[data-input-2]');
-                        if(i1) i1.value = '';
-                        if(i2) i2.value = '';
+                    } else if(item.dataset.type === 'dual_input' || item.dataset.type === 'triple_input') {
+                        fieldInputs(item).forEach(i => { i.value = ''; });
                     }
                 });
                 saveState();
@@ -1000,41 +1324,64 @@
                 }
             };
 
+            /* Повертає false, якщо звіт не вліз у сховище браузера. Мовчазна
+               відмова тут означала б утрачений звіт, тому виклик перевіряється. */
             const saveReportOffline = (reportData) => {
-                const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
-                queue.push(reportData);
-                localStorage.setItem(OFFLINE_KEY, JSON.stringify(queue));
-                updateNetworkStatus();
+                try {
+                    const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+                    queue.push(reportData);
+                    localStorage.setItem(OFFLINE_KEY, JSON.stringify(queue));
+                    updateNetworkStatus();
+                    return true;
+                } catch (e) {
+                    console.error('offline queue full', e);
+                    return false;
+                }
             };
 
+            /* Прапорець проти повторного входу: подія «online» і натискання на
+               індикатор мережі можуть трапитися одночасно, і тоді два прогони
+               читають ту саму чергу — звіт іде двічі, а запис у localStorage
+               наприкінці воскрешає вже відправлений. */
+            let syncingQueue = false;
+
             const processOfflineQueue = async () => {
+                if (syncingQueue) return;
                 const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
                 if (queue.length === 0) return;
+                syncingQueue = true;
 
                 const statusDot = document.getElementById('statusDot');
                 statusDot.className = 'status-dot syncing';
                 document.getElementById('statusText').textContent = 'Синхронізація...';
 
                 const newQueue = [];
+                let sent = 0, refused = 0, lastMsg = '';
+                try {
                 for (const report of queue) {
+                    let res = null;
                     try {
-                        await fetch(GOOGLE_SCRIPT_URL, {
-                            method: 'POST',
-                            mode: 'no-cors',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(report)
-                        });
+                        // токен беремо ПОТОЧНИЙ: той, що був у мить збереження,
+                        // міг застаріти, поки звіт лежав у черзі
+                        res = await api(Object.assign({}, report, { token: session && session.token }));
                     } catch (e) {
-                        console.error('Failed to sync report', e);
-                        newQueue.push(report);
+                        res = null;
                     }
+                    if (res && (res.ok || res.duplicate)) { sent++; continue; }
+                    if (res && !res.ok) { refused++; lastMsg = res.message || res.error || ''; }
+                    newQueue.push(report);
                 }
 
                 localStorage.setItem(OFFLINE_KEY, JSON.stringify(newQueue));
                 updateNetworkStatus();
-                
-                if (newQueue.length === 0) {
-                    customAlert('Всі офлайн звіти успішно відправлено!');
+
+                if (sent && !newQueue.length) {
+                    customAlert(`Збережені звіти відправлено: ${sent}`);
+                } else if (refused) {
+                    customAlert(`Сервер не прийняв ${refused} звіт(ів) із черги: ${lastMsg}\n\nЗвіти залишилися на пристрої.`);
+                }
+                } finally {
+                    syncingQueue = false;
                 }
             };
 
@@ -1147,8 +1494,8 @@
             };
 
             const submitReport = async (section) => {
-                if (GOOGLE_SCRIPT_URL.includes('ВСТАВТЕ')) { customAlert("Налаштуйте Google Script URL у коді."); return; }
-                
+                if (photoBusy > 0) { customAlert('Зачекайте, фото ще обробляються.'); return; }
+
                 const btn = document.getElementById('submitReportBtn');
                 const status = document.getElementById('submitStatus');
                 btn.disabled = true;
@@ -1157,104 +1504,75 @@
                 status.textContent = 'Обробка даних...';
                 status.className = 'mt-2 text-sm text-blue-600 font-bold';
 
-                const sectionTitle = (section === 'start') ? 'Початок зміни' : 'Кінець зміни';
-                const items = Array.from(document.querySelectorAll(`#${section}ShiftSection .checklist-item`));
-                const total = items.length;
-                const completed = items.filter(i => i.classList.contains('completed')).length;
+                const payload = buildPayload(section);
+                const shortName = employeeSelect.value.split(' ')[1] || employeeSelect.value;
 
-                const now = new Date();
-                const dateStr = now.toLocaleDateString('uk-UA').replace(/\./g, '-');
-                const timeStr = now.toLocaleTimeString('uk-UA').replace(/:/g, '-');
-
-                const reportItems = items.map(item => {
-                    const uniqueId = item.id;
-                    const itemText = item.querySelector('.task-text').textContent.trim();
-                    const photoBase64 = currentPhotos[uniqueId] || null;
-                    const safeName = itemText.substring(0, 20).replace(/[^a-zа-я0-9]/gi, '_');
-                    const photoName = photoBase64 ? `${safeName}_${dateStr}_${timeStr}.jpg` : null;
-
-                    // ЗНАХОДИМО КАТЕГОРІЮ (ДЛЯ БЕКЕНДУ)
-                    const configId = uniqueId.replace(`${section}-`, '');
-                    let itemCategory = 'Інше';
-                    checklistConfig.forEach(g => {
-                        if (g.items.some(i => i.id === configId)) itemCategory = g.title;
-                    });
-
-                    // ПЕРЕВІРЯЄМО ЧИ ОБРАНА "ПОГАНА" ВІДПОВІДЬ (ДЛЯ БЕКЕНДУ)
-                    const isBad = item.querySelector('.selected-bad') !== null;
-
-                    return {
-                        text: itemText,
-                        completed: item.classList.contains('completed'),
-                        value: item.dataset.value || 'Н/Д',
-                        comment: item.querySelector('.comment-text').textContent.trim(),
-                        photoData: photoBase64,
-                        photoName: photoName,
-                        category: itemCategory,
-                        isBad: isBad
-                    };
-                });
-
-                const reportData = {
-                    date: new Date().toLocaleString('uk-UA'),
-                    time: new Date().toLocaleTimeString('uk-UA'),
-                    mechanic: employeeSelect.value,
-                    shiftStage: sectionTitle,
-                    summary: `Виконано ${completed} з ${total}`,
-                    items: reportItems
+                const reset = () => {
+                    btn.disabled = false;
+                    btn.textContent = 'Підтвердити та Відправити';
+                    status.classList.add('hidden');
                 };
-
-                if (!navigator.onLine) {
-                    saveReportOffline(reportData);
-                    clearSectionData(section);
-                    status.textContent = 'Збережено офлайн!';
+                const finish = (text, cls, alertText) => {
+                    status.textContent = text;
+                    status.className = 'mt-2 text-sm font-bold ' + cls;
                     setTimeout(() => {
                         document.getElementById('completionModal').style.display = 'none';
-                        btn.disabled = false;
-                        btn.textContent = 'Підтвердити та Відправити';
-                        status.classList.add('hidden');
-                        
-                        const mechanicName = employeeSelect.value.split(' ')[1] || employeeSelect.value;
-                        customAlert(`Відсутній інтернет. Звіт збережено локально!\n\n${mechanicName}, щиро дякуємо за ваш сумлінний труд! Бажаємо хорошого робочого дня! 🛠️`);
+                        reset();
+                        if (alertText) customAlert(alertText);
                     }, 1000);
+                };
+                const queueIt = (why) => {
+                    if (saveReportOffline(payload)) {
+                        clearSectionData(section);
+                        finish('Збережено офлайн!', 'text-orange-600',
+                               `${why}\nЗвіт збережено на пристрої і піде сам, щойно з'явиться зв'язок.\n\n${shortName}, щиро дякуємо за ваш сумлінний труд! Бажаємо хорошого робочого дня! 🛠️`);
+                    } else {
+                        // сховище браузера переповнене — очищати форму НЕ МОЖНА
+                        reset();
+                        status.classList.remove('hidden');
+                        status.textContent = '❌ Не вистачає місця на пристрої';
+                        status.className = 'mt-2 text-sm text-red-600 font-bold';
+                        customAlert('Пам\'ять браузера переповнена, звіт не збережено.\n\nВідправте раніше збережені звіти (кнопка статусу мережі вгорі) або приберіть частину фото — і спробуйте ще раз. Заповнене нікуди не зникло.');
+                    }
+                };
+
+                if (!navigator.onLine) { queueIt('Відсутній інтернет.'); return; }
+
+                let res = null;
+                try {
+                    res = await api(Object.assign({ token: session && session.token }, payload));
+                } catch (e) {
+                    console.error(e);
+                    queueIt('Не вдалося достукатися до сервера.');
                     return;
                 }
 
-                try {
-                    await fetch(GOOGLE_SCRIPT_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(reportData)
-                    });
-                    
-                    clearSectionData(section);
+                // ── сервер відповів; тепер ми ЗНАЄМО, що сталося зі звітом ──
+                if (res && (res.ok || res.duplicate)) {
+                    clearSectionData(section);          // очищаємо ТІЛЬКИ після підтвердження
+                    const warn = (res.warnings && res.warnings.length)
+                        ? '\n\nУвага: ' + res.warnings.join('; ') : '';
+                    finish('✅ Успішно! Звіт відправлено.', 'text-green-600',
+                           `Звіт успішно відправлено!${warn}\n\n${shortName}, щиро дякуємо за ваш сумлінний труд! Бажаємо хорошого робочого дня! 🛠️`);
+                    return;
+                }
 
-                    status.textContent = '✅ Успішно! Звіт відправлено.';
-                    status.className = 'mt-2 text-sm text-green-600 font-bold';
-                    setTimeout(() => {
-                        document.getElementById('completionModal').style.display = 'none';
-                        btn.disabled = false;
-                        btn.textContent = 'Підтвердити та Відправити';
-                        status.classList.add('hidden');
-                        
-                        const mechanicName = employeeSelect.value.split(' ')[1] || employeeSelect.value;
-                        customAlert(`Звіт успішно відправлено!\n\n${mechanicName}, щиро дякуємо за ваш сумлінний труд! Бажаємо хорошого робочого дня! 🛠️`);
-                    }, 1000);
-                } catch (e) {
-                    console.error(e);
-                    saveReportOffline(reportData);
-                    clearSectionData(section);
-                    status.textContent = 'Збережено офлайн (помилка мережі).';
-                    setTimeout(() => {
-                        document.getElementById('completionModal').style.display = 'none';
-                        btn.disabled = false;
-                        btn.textContent = 'Підтвердити та Відправити';
-                        status.classList.add('hidden');
-                        
-                        const mechanicName = employeeSelect.value.split(' ')[1] || employeeSelect.value;
-                        customAlert(`Помилка мережі. Звіт збережено локально!\n\n${mechanicName}, щиро дякуємо за ваш сумлінний труд! Бажаємо хорошого робочого дня! 🛠️`);
-                    }, 1000);
+                // Відмова сервера — черга не допоможе, дані лишаємо у формі
+                reset();
+                status.classList.remove('hidden');
+                status.textContent = '❌ ' + (res.message || res.error || 'Сервер відхилив звіт');
+                status.className = 'mt-2 text-sm text-red-600 font-bold';
+
+                if (res.error === 'auth' || res.error === 'no_session') {
+                    dropSession();
+                    customAlert('Сесія завершилася. Увійдіть за PIN ще раз — заповнене нікуди не зникло.');
+                    await bootAuth();
+                    applySession();
+                } else if (res.error === 'pin_change_required') {
+                    await openChangePin('', true);
+                } else {
+                    customAlert('Звіт не прийнято: ' + (res.message || res.error || 'невідома помилка') +
+                                '\n\nЗаповнене залишилося у формі — виправте і спробуйте ще раз.');
                 }
             };
             
@@ -1262,12 +1580,21 @@
                 if(currentSection !== 'contacts') showCompletionModal(currentSection);
             });
 
-            // Init Employee List
-            if(employeeSelect) {
-                const employees = ["Галагін Євгеній Ярославович","Сабадаш Геннадій Петрович","Гора Андрій Олександрович"];
-                employees.forEach(e => employeeSelect.add(new Option(e, e)));
-                employeeSelect.addEventListener('change', saveState);
-            }
+            // Прізвище механіка більше не обирається зі списку — його дає вхід за PIN.
+            const changePinBtn = document.getElementById('changePinBtn');
+            if (changePinBtn) changePinBtn.addEventListener('click', () => openChangePin('', false));
+
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) logoutBtn.addEventListener('click', async () => {
+                const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+                const warn = queue.length
+                    ? `\n\nУвага: ${queue.length} звіт(ів) ще не відправлено. Вони залишаться на пристрої до наступного входу.`
+                    : '';
+                if (await customConfirm('Вийти із застосунку?' + warn)) {
+                    dropSession();
+                    location.reload();
+                }
+            });
             
             const themeToggleBtn = document.getElementById('themeToggle');
             if(themeToggleBtn) {
@@ -1297,8 +1624,13 @@
             if(contactsBtnHeader) contactsBtnHeader.addEventListener('click', () => switchView('contacts'));
 
             loadState();
-            updateNetworkStatus(); 
+            updateNetworkStatus();
+
+            await bootAuth();      // тут застосунок чекає, доки не увійдуть за PIN
+            applySession();
+
             switchView('start');
+            processOfflineQueue();
         });
     </script>
 </body>

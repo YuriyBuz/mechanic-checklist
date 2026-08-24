@@ -40,3 +40,20 @@ python3 tools/gen_seed.py     # answers.json + index.html клієнта → See
 
 Це не заміна `authSelfTest()` у самому Apps Script — стаби рахують хеші тим
 самим алгоритмом, але Google може поводитись інакше з правами й блокуваннями.
+
+## Клієнт у браузері: e2e.js і e2e2.js
+
+    node tools/mock_server.js            # підробний бекенд на 127.0.0.1:8731
+    node tools/e2e.js                    # вхід, ролі, типи пунктів, склад payload
+    node tools/e2e2.js                   # офлайн-черга, відмови сервера
+
+`mock_server.js` віддає справжній `index.html`, підмінивши в ньому
+`GOOGLE_SCRIPT_URL` на себе, і відповідає так само, як Code.gs. Перед кожним
+прогоном стан скидається через `GET /reset`.
+
+Tailwind вантажиться з CDN, якого в пісочниці немає, тож сервер підставляє
+`.hidden{display:none}` замість нього. Щоб знімати екрани з реальним
+оформленням, зберіть CSS і вкажіть його:
+
+    npx tailwindcss@3 -i tw.css -o tw.out.css --content index.html --minify
+    TW_CSS=$PWD/tw.out.css node tools/mock_server.js
