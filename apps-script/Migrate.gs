@@ -17,7 +17,7 @@ var ICON_STATUS = { '✅': 'ok', '❗ ❌': 'alert', '❌': 'empty' };
  * відповідь дістає статус «unknown». Вигадувати аварію з незрозумілого тексту
  * гірше, ніж чесно сказати «не розпізнано».
  */
-var NO_ERROR_RE = /(нема|немає|нет|відс|отс|норма|^ок$|^ok$|без помил|не ошиб|помилки відсут|помилок нема|^так$|^не$)/;
+var NO_ERROR_RE = /(^нем|нема|немає|нет|відс|отс|норма|^ок$|^ok$|без помил|не ошиб|помилки відсут|помилок нема|^так$|^не$)/;
 
 function normalizeFreeText_(itemId, text) {
   if (itemId !== 'mech.3-4') return text;
@@ -317,5 +317,35 @@ function relinkUsers() {
 
   var msg = 'Оновлено user_id у звітах: ' + changed + ', у відповідях: ' + out.length;
   logEvent('Міграція', 'relinkUsers', msg);
+  return msg;
+}
+
+
+/**
+ * Очищає 11_Звіти / 12_Відповіді / 13_Фото, лишаючи заголовки,
+ * щоб migrateLegacy() можна було прогнати з нуля.
+ *
+ * «Лист1» НЕ ЧІПАЄТЬСЯ — усі дані відтворюються з нього повністю,
+ * тому операція безпечна. Але щоб не запустити випадково, потрібен
+ * явний аргумент: resetMigration('ТАК')
+ */
+function resetMigration(confirm) {
+  if (confirm !== 'ТАК') {
+    return 'Нічого не зроблено. Щоб справді очистити, викличте resetMigration("ТАК") — ' +
+           'у полі аргументів або тимчасово змініть виклик у коді.';
+  }
+  var cleared = [];
+  [SH.REPORTS, SH.ANSWERS, SH.PHOTOS].forEach(function (name) {
+    var sh = sheetByName(name);
+    var last = sh.getLastRow();
+    if (last > 1) {
+      sh.getRange(2, 1, last - 1, sh.getLastColumn()).clearContent();
+      cleared.push(name + ': ' + (last - 1));
+    } else {
+      cleared.push(name + ': порожній');
+    }
+  });
+  var msg = 'Очищено — ' + cleared.join(' · ') + '. Тепер запустіть migrateLegacy() заново.';
+  logEvent('Міграція', 'resetMigration', msg);
   return msg;
 }
