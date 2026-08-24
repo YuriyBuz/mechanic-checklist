@@ -63,7 +63,7 @@ function submitReport_(p) {
   var bizDate = p.business_date || businessDate(now);
 
   var answers = [], cnt = { ok: 0, warn: 0, alert: 0, empty: 0, unknown: 0 };
-  var alerts = [];
+  var alerts = [], emailItems = [];
 
   (p.items || []).forEach(function (it, i) {
     var item = dict.byId[it.item_id];
@@ -87,6 +87,14 @@ function submitReport_(p) {
       alerts.push({ status: status, text: item ? item.text : it.item_id,
                     value: it.value || nums.join(' / '), comment: it.comment || '' });
     }
+    emailItems.push({
+      group: item ? item.group_title : 'Інше',
+      text: item ? item.text : (it.legacy_text || it.item_id),
+      value: it.value || nums.join(' / '),
+      status: status,
+      comment: it.comment || '',
+      item_id: it.item_id
+    });
 
     answers.push([
       p.report_id + '#' + (i + 1), p.report_id, bizDate, p.stage, p.role, user.user_id,
@@ -109,7 +117,7 @@ function submitReport_(p) {
   appendRows(SH.PHOTOS, photos.rows);
 
   try {
-    sendReportEmail_(p, user, bizDate, cnt, alerts, photos);
+    sendReportEmail_(p, user, bizDate, cnt, alerts, photos, emailItems);
   } catch (mailErr) {
     // звіт уже збережено — розсилка не має його скасовувати, але мовчати теж не можна
     logEvent('Техніка', 'mail.failed', String(mailErr), { report_id: p.report_id });
@@ -201,7 +209,7 @@ function resolveUser_(dict, userId, userName) {
  * «Помилка фото» всередину звіту, як робив старий скрипт.
  */
 function savePhotos_(p, answers, dict) {
-  var out = { rows: [], saved: 0, failed: 0 };
+  var out = { rows: [], saved: 0, failed: 0, blobs: {}, urls: {} };
   var items = (p.items || []).filter(function (it) { return it.photoData; });
   if (!items.length) return out;
 
@@ -225,8 +233,11 @@ function savePhotos_(p, answers, dict) {
       var b64 = it.photoData.indexOf('base64,') > -1 ? it.photoData.split('base64,')[1] : it.photoData;
       var name = [businessDate(), p.stage === 'Кінець зміни' ? 'end' : 'start',
                   it.item_id, p.report_id].join('_') + '.jpg';
-      var file = folder.createFile(Utilities.newBlob(Utilities.base64Decode(b64), MimeType.JPEG, name));
+      var bytes = Utilities.base64Decode(b64);
+      var file = folder.createFile(Utilities.newBlob(bytes, MimeType.JPEG, name));
       var url = file.getUrl();
+      out.blobs[it.item_id] = Utilities.newBlob(bytes, MimeType.JPEG, name);
+      out.urls[it.item_id] = url;
       out.rows.push([pid, p.report_id, it.item_id, url, file.getId(), 'saved', '']);
       out.saved++;
       for (var a = 0; a < answers.length; a++) {

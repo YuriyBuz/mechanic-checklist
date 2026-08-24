@@ -13,52 +13,105 @@ function recipients_(key) {
   return (v || '').split(',').map(function (s) { return s.trim(); }).filter(String);
 }
 
-function sendReportEmail_(p, user, bizDate, cnt, alerts, photos) {
+/**
+ * Лист. ВЕРСТКА — ТА САМА, ЩО У СТАРОМУ doPost: заголовок, дата, розділ на
+ * кожну категорію, таблиця «Пункт | Статус/Дані | Фото», інлайн-фото з
+ * посиланням, червона підсвітка відхилень. Нічого в оформленні не змінено.
+ *
+ * Єдина відмінність від старого: статус береться з довідників, а не з позиції
+ * кнопки, тому ❗ тепер стоїть там, де справді відхилення.
+ */
+function sendReportEmail_(p, user, bizDate, cnt, alerts, photos, items) {
   var to = recipients_('MAIL_TO');
   if (!to.length) {
     logEvent('Техніка', 'mail.skipped', 'MAIL_TO не заданий у властивостях скрипта', {});
     return;
   }
 
-  var head = cnt.alert
-    ? '⚠️ Відхилень: ' + cnt.alert + (cnt.warn ? ' · попереджень: ' + cnt.warn : '')
-    : (cnt.warn ? '⚠️ Попереджень: ' + cnt.warn : '✅ Без відхилень');
+  var role = p.role || 'Механік';
+  var who = user.name || p.user_name || '';
+  var subject = 'Звіт (' + role + '): ' + p.stage + ' - ' + who;
 
-  var subject = '[' + (cnt.alert ? 'ВІДХИЛЕННЯ ' + cnt.alert : 'OK') + '] ' +
-                p.stage + ' · ' + (user.name || p.user_name) + ' · ' + bizDate;
+  // групуємо за категоріями, зберігаючи порядок появи — як робив старий скрипт
+  var order = [], grouped = {};
+  (items || []).forEach(function (it) {
+    var g = it.group || 'Інше';
+    if (!grouped[g]) { grouped[g] = []; order.push(g); }
+    grouped[g].push(it);
+  });
 
-  var html = '<div style="font-family:sans-serif;font-size:14px;color:#1e293b">';
-  html += '<div style="background:' + (cnt.alert ? '#fef2f2' : '#f0fdf4') +
-          ';border-left:5px solid ' + (cnt.alert ? '#dc2626' : '#16a34a') +
-          ';padding:14px 16px;margin-bottom:18px">' +
-          '<div style="font-size:18px;font-weight:700">' + esc_(head) + '</div>' +
-          '<div style="color:#64748b;margin-top:4px">' + esc_(p.stage) + ' · ' +
-          esc_(user.name || p.user_name || '') + ' · ' + esc_(bizDate) + '</div></div>';
+  var inlineImages = {};
+  var attachments = [];
+  var cidByItem = {};
+  var n = 0;
+  Object.keys(photos.blobs || {}).forEach(function (itemId) {
+    var cid = 'img_' + (n++);
+    cidByItem[itemId] = cid;
+    inlineImages[cid] = photos.blobs[itemId].copyBlob().setName(cid);
+    attachments.push(photos.blobs[itemId]);
+  });
 
-  if (alerts.length) {
-    html += '<table style="border-collapse:collapse;width:100%;margin-bottom:18px">';
-    alerts.forEach(function (a) {
-      var color = a.status === 'alert' ? '#b91c1c' : '#b45309';
-      html += '<tr><td style="border:1px solid #e2e8f0;padding:9px 12px;color:' + color + '">' +
-              (a.status === 'alert' ? '❗ ' : '⚠️ ') + esc_(a.text) +
-              ' <b>[' + esc_(a.value) + ']</b>' +
-              (a.comment ? '<br><i style="color:#64748b;font-size:12px">💬 ' + esc_(a.comment) + '</i>' : '') +
-              '</td></tr>';
+  var html = '' +
+    '<h2 style="color: #047857; margin-bottom: 5px;">' + esc_(subject) + '</h2>' +
+    '<p style="margin-top: 0;"><strong>Дата:</strong> ' + esc_(bizDate) + ' ' + esc_(localTime()) + '</p>' +
+    '<hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 20px;">';
+
+  order.forEach(function (g) {
+    html += '' +
+      '<h3 style="background-color: #f1f5f9; padding: 10px; border-left: 4px solid #10b981; ' +
+      'margin-top: 25px; margin-bottom: 10px; color: #1e293b;">' + esc_(g) + '</h3>' +
+      '<table style="border-collapse: collapse; width: 100%; border: 1px solid #e2e8f0; ' +
+      'font-family: sans-serif; font-size: 14px;">' +
+      '<tr style="background-color: #f8fafc; color: #64748b;">' +
+      '<th style="border: 1px solid #e2e8f0; padding: 10px; text-align: left; width: 55%;">Пункт</th>' +
+      '<th style="border: 1px solid #e2e8f0; padding: 10px; text-align: center; width: 25%;">Статус/Дані</th>' +
+      '<th style="border: 1px solid #e2e8f0; padding: 10px; text-align: center; width: 20%;">Фото</th>' +
+      '</tr>';
+
+    grouped[g].forEach(function (it) {
+      var isBad = it.status === 'alert';
+      var isWarn = it.status === 'warn';
+      var rowColor = isBad ? '#fef2f2' : (isWarn ? '#fffbeb' : (it.status === 'empty' ? '#f9fafb' : '#ffffff'));
+      var textColor = isBad ? '#b91c1c' : (isWarn ? '#b45309' : '#1e293b');
+      var boldWeight = (isBad || isWarn) ? 'font-weight: bold;' : '';
+      var prefix = isBad ? '❗ ' : (isWarn ? '⚠️ ' : '');
+
+      var cid = cidByItem[it.item_id];
+      var photoHtml = cid
+        ? '<img src="cid:' + cid + '" style="max-width:100px;border-radius:4px;"><br>' +
+          '<a href="' + esc_(photos.urls[it.item_id] || '') + '" style="font-size: 11px; color: #3b82f6;">Посилання</a>'
+        : "<span style='color:#cbd5e1;'>-</span>";
+
+      html += '' +
+        '<tr style="background-color: ' + rowColor + '; color: ' + textColor + ';">' +
+        '<td style="border: 1px solid #e2e8f0; padding: 10px; ' + boldWeight + '">' +
+        prefix + esc_(it.text) +
+        (it.comment
+          ? '<br><em style="color:#64748b; font-size: 0.85em; font-weight: normal; display: block; ' +
+            'margin-top: 4px;">💬 Коментар: ' + esc_(it.comment) + '</em>'
+          : '') +
+        '</td>' +
+        '<td style="border: 1px solid #e2e8f0; padding: 10px; text-align: center; ' + boldWeight + '">' +
+        esc_(it.value || (it.status === 'empty' ? '-' : 'OK')) +
+        '</td>' +
+        '<td style="border: 1px solid #e2e8f0; padding: 10px; text-align: center;">' + photoHtml + '</td>' +
+        '</tr>';
     });
     html += '</table>';
-  }
-
-  html += '<div style="color:#64748b">Пунктів: ' + ((p.items || []).length) +
-          ' · у нормі ' + cnt.ok + ' · не заповнено ' + cnt.empty + '</div>';
+  });
 
   if (photos.failed) {
-    html += '<div style="background:#fffbeb;border:1px solid #fcd34d;padding:10px;margin-top:14px">' +
-            'Не збереглося фото: <b>' + photos.failed + '</b>. Перевірте доступ скрипта до Drive.</div>';
+    html += '<p style="color: red; margin-top: 20px;"><strong>Помилка збереження фото на Диск:</strong> ' +
+            photos.failed + ' шт.</p>';
   }
-  html += '<div style="color:#94a3b8;font-size:12px;margin-top:20px">' +
-          esc_(p.report_id) + '</div></div>';
 
-  MailApp.sendEmail({ to: to.join(','), subject: subject, htmlBody: html });
+  MailApp.sendEmail({
+    to: to.join(','),
+    subject: subject,
+    htmlBody: html,
+    inlineImages: inlineImages,
+    attachments: attachments
+  });
 }
 
 function esc_(s) {
