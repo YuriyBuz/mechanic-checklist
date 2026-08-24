@@ -349,3 +349,80 @@ function resetMigration(confirm) {
   logEvent('Міграція', 'resetMigration', msg);
   return msg;
 }
+
+
+/**
+ * Перейменування пунктів майстра під ід живого фронтенду.
+ *
+ * Коли структуру відновлювали з даних, фронтенду майстра ще не було під рукою,
+ * і пункти отримали власні ід (master.m1-1). Насправді застосунок майстра
+ * називає їх інакше (s1-1, e3-2). Усі 30 збіглися за текстом і за стадією,
+ * тож перейменування механічне — але зробити його треба скрізь одразу,
+ * інакше старі відповіді відв'яжуться від довідника.
+ *
+ * Запускати ОДИН раз. Повторний запуск нічого не робить.
+ */
+var MASTER_GROUP_RENAME = {
+  m1: { id: 's1', group: 'start-1' }, m2: { id: 's2', group: 'start-2' },
+  m3: { id: 's3', group: 'start-3' }, m4: { id: 's4', group: 'start-4' },
+  m5: { id: 'e1', group: 'end-1' },   m6: { id: 'e2', group: 'end-2' },
+  m7: { id: 'e3', group: 'end-3' },   m8: { id: 'e4', group: 'end-4' },
+  m9: { id: 'e5', group: 'end-5' }
+};
+
+function renameMasterItems() {
+  return withLock(function () {
+    var out = [];
+
+    function newId(oldId) {
+      var m = /^master\.(m[1-9])-(\d+)$/.exec(String(oldId));
+      if (!m) return '';
+      var r = MASTER_GROUP_RENAME[m[1]];
+      return r ? 'master.' + r.id + '-' + m[2] : '';
+    }
+
+    // ── 01_Пункти: ід і group_id ──
+    var it = readTable(SH.ITEMS);
+    var itemsChanged = 0;
+    var rows = it.rows.map(function (r) {
+      var nid = newId(r[it.col.item_id]);
+      if (!nid) return r;
+      itemsChanged++;
+      var copy = r.slice();
+      copy[it.col.item_id] = nid;
+      var g = /^master\.(m[1-9])-/.exec(String(r[it.col.item_id]));
+      if (g && MASTER_GROUP_RENAME[g[1]]) copy[it.col.group_id] = MASTER_GROUP_RENAME[g[1]].group;
+      return copy;
+    });
+    if (!itemsChanged) {
+      var already = it.rows.filter(function (r) {
+        return /^master\.[se]\d-/.test(String(r[it.col.item_id]));
+      }).length;
+      return 'Нічого перейменовувати: пунктів master.m* немає' +
+             (already ? (', а master.s*/e* уже ' + already) : '') + '.';
+    }
+    it.sheet.getRange(2, 1, rows.length, it.header.length).setValues(rows);
+    out.push(SH.ITEMS + ': перейменовано ' + itemsChanged);
+
+    // ── решта аркушів: тільки колонка item_id ──
+    [[SH.OPTIONS, 'item_id'], [SH.ANSWERS, 'item_id'], [SH.PHOTOS, 'item_id']].forEach(function (pair) {
+      var t = readTable(pair[0]);
+      var c = t.col[pair[1]];
+      if (c === undefined || !t.rows.length) return;
+      var col = t.rows.map(function (r) {
+        var nid = newId(r[c]);
+        return [nid || r[c]];
+      });
+      var n = 0;
+      t.rows.forEach(function (r) { if (newId(r[c])) n++; });
+      if (!n) { out.push(pair[0] + ': нічого'); return; }
+      t.sheet.getRange(2, c + 1, col.length, 1).setValues(col);
+      out.push(pair[0] + ': перейменовано ' + n);
+    });
+
+    var msg = out.join('\n');
+    logEvent('Схема', 'renameMasterItems', msg);
+    Logger.log(msg);
+    return msg;
+  }, 60000);
+}

@@ -815,9 +815,9 @@
       "notes": ""
     },
     {
-      "item_id": "master.m1-1",
+      "item_id": "master.s1-1",
       "role": "Майстер",
-      "group_id": "m1",
+      "group_id": "start-1",
       "group_title": "1. Прийом зміни та перевірка персоналу",
       "seq": 1,
       "text": "Ознайомитись з записами і результатами від попереднього майстра зміни.",
@@ -830,12 +830,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m1-2",
+      "item_id": "master.s1-2",
       "role": "Майстер",
-      "group_id": "m1",
+      "group_id": "start-1",
       "group_title": "1. Прийом зміни та перевірка персоналу",
       "seq": 2,
       "text": "Ознайомитись з виробничим планом на зміну.",
@@ -848,12 +848,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m1-3",
+      "item_id": "master.s1-3",
       "role": "Майстер",
-      "group_id": "m1",
+      "group_id": "start-1",
       "group_title": "1. Прийом зміни та перевірка персоналу",
       "seq": 3,
       "text": "Перевірити присутність та візуально оцінити стан здоров'я працівників.",
@@ -866,12 +866,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m1-4",
+      "item_id": "master.s1-4",
       "role": "Майстер",
-      "group_id": "m1",
+      "group_id": "start-1",
       "group_title": "1. Прийом зміни та перевірка персоналу",
       "seq": 4,
       "text": "Перевірити дотримання працівниками гігієни та належного стану одягу.",
@@ -884,12 +884,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m2-1",
+      "item_id": "master.s2-1",
       "role": "Майстер",
-      "group_id": "m2",
+      "group_id": "start-2",
       "group_title": "2. Контроль санітарного стану та обладнання",
       "seq": 1,
       "text": "Перевірити санітарний стан виробничих приміщень (цехи варки, фасування).",
@@ -902,12 +902,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m2-2",
+      "item_id": "master.s2-2",
       "role": "Майстер",
-      "group_id": "m2",
+      "group_id": "start-2",
       "group_title": "2. Контроль санітарного стану та обладнання",
       "seq": 2,
       "text": "Перевірити чистоту та справність основного і допоміжного обладнання.",
@@ -920,12 +920,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m2-3",
+      "item_id": "master.s2-3",
       "role": "Майстер",
-      "group_id": "m2",
+      "group_id": "start-2",
       "group_title": "2. Контроль санітарного стану та обладнання",
       "seq": 3,
       "text": "Впевнитись, що інструменти та інвентар на своїх місцях і готові до роботи.",
@@ -938,12 +938,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m2-4",
+      "item_id": "master.s2-4",
       "role": "Майстер",
-      "group_id": "m2",
+      "group_id": "start-2",
       "group_title": "2. Контроль санітарного стану та обладнання",
       "seq": 4,
       "text": "Перевірити цілісність предметів зі скла та крихких матеріалів технологічного інвентарю та колючо-ріжучих предметів.",
@@ -956,12 +956,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m3-1",
+      "item_id": "master.s3-1",
       "role": "Майстер",
-      "group_id": "m3",
+      "group_id": "start-3",
       "group_title": "3. Організація виробничого процесу",
       "seq": 1,
       "text": "Провести надихаючу нараду по виробничим завданням і техніки безпеки.",
@@ -974,12 +974,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m3-2",
+      "item_id": "master.s3-2",
       "role": "Майстер",
-      "group_id": "m3",
+      "group_id": "start-3",
       "group_title": "3. Організація виробничого процесу",
       "seq": 2,
       "text": "Розподілити працівників по робочих місцях згідно з планом.",
@@ -992,12 +992,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m3-3",
+      "item_id": "master.s3-3",
       "role": "Майстер",
-      "group_id": "m3",
+      "group_id": "start-3",
       "group_title": "3. Організація виробничого процесу",
       "seq": 3,
       "text": "Перевірити наявність необхідної сировини та матеріалів на зміну.",
@@ -1010,12 +1010,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m3-4",
+      "item_id": "master.s3-4",
       "role": "Майстер",
-      "group_id": "m3",
+      "group_id": "start-3",
       "group_title": "3. Організація виробничого процесу",
       "seq": 4,
       "text": "Проконтролювати візуально якість готової продукції яка залишилась в цеху.",
@@ -1028,12 +1028,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m4-1",
+      "item_id": "master.s4-1",
       "role": "Майстер",
-      "group_id": "m4",
+      "group_id": "start-4",
       "group_title": "4. Звітність",
       "seq": 1,
       "text": "Доповісти керівництву про початок виробничого процесу.",
@@ -1046,12 +1046,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m5-1",
+      "item_id": "master.e1-1",
       "role": "Майстер",
-      "group_id": "m5",
+      "group_id": "end-1",
       "group_title": "1. Завершення виробничих операцій",
       "seq": 1,
       "text": "Переконатись у виконанні виробничого плану зміни.",
@@ -1064,12 +1064,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m5-2",
+      "item_id": "master.e1-2",
       "role": "Майстер",
-      "group_id": "m5",
+      "group_id": "end-1",
       "group_title": "1. Завершення виробничих операцій",
       "seq": 2,
       "text": "Виписати і організувати передачу всіеї виробленої продукції на склад.",
@@ -1082,12 +1082,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m5-3",
+      "item_id": "master.e1-3",
       "role": "Майстер",
-      "group_id": "m5",
+      "group_id": "end-1",
       "group_title": "1. Завершення виробничих операцій",
       "seq": 3,
       "text": "Проконтролювати сортування та підготовку виробничих відходів до вивезення.",
@@ -1100,12 +1100,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m5-4",
+      "item_id": "master.e1-4",
       "role": "Майстер",
-      "group_id": "m5",
+      "group_id": "end-1",
       "group_title": "1. Завершення виробничих операцій",
       "seq": 4,
       "text": "Забезпечити прибирання робочих місць персоналом та чистоту в цеху.",
@@ -1118,12 +1118,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m5-5",
+      "item_id": "master.e1-5",
       "role": "Майстер",
-      "group_id": "m5",
+      "group_id": "end-1",
       "group_title": "1. Завершення виробничих операцій",
       "seq": 5,
       "text": "Переконатись, що залишки сировини та матеріалів накриті та на місцях.",
@@ -1136,12 +1136,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m6-1",
+      "item_id": "master.e2-1",
       "role": "Майстер",
-      "group_id": "m6",
+      "group_id": "end-2",
       "group_title": "2. Підготовка до наступної зміни",
       "seq": 1,
       "text": "Сформувати замовлення на сировину та матеріали для наступної зміни.",
@@ -1154,12 +1154,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m6-2",
+      "item_id": "master.e2-2",
       "role": "Майстер",
-      "group_id": "m6",
+      "group_id": "end-2",
       "group_title": "2. Підготовка до наступної зміни",
       "seq": 2,
       "text": "Перевірити, чи все обладнання вимкнене або переведене у безпечний режим.",
@@ -1172,12 +1172,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m7-1",
+      "item_id": "master.e3-1",
       "role": "Майстер",
-      "group_id": "m7",
+      "group_id": "end-3",
       "group_title": "3. Звітність та передача зміни",
       "seq": 1,
       "text": "Заповнити розділ коментарів в оперативному плані результатами роботи.",
@@ -1190,12 +1190,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m7-2",
+      "item_id": "master.e3-2",
       "role": "Майстер",
-      "group_id": "m7",
+      "group_id": "end-3",
       "group_title": "3. Звітність та передача зміни",
       "seq": 2,
       "text": "Підготувати звіт про результати роботи (кількість, якість, брак, простої).",
@@ -1208,12 +1208,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m7-3",
+      "item_id": "master.e3-3",
       "role": "Майстер",
-      "group_id": "m7",
+      "group_id": "end-3",
       "group_title": "3. Звітність та передача зміни",
       "seq": 3,
       "text": "Задокументувати всі випадки браку або невідповідності продукції.",
@@ -1226,12 +1226,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m7-4",
+      "item_id": "master.e3-4",
       "role": "Майстер",
-      "group_id": "m7",
+      "group_id": "end-3",
       "group_title": "3. Звітність та передача зміни",
       "seq": 4,
       "text": "Підготувати звіт про санітарний стан на кінець зміни.",
@@ -1244,12 +1244,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m7-5",
+      "item_id": "master.e3-5",
       "role": "Майстер",
-      "group_id": "m7",
+      "group_id": "end-3",
       "group_title": "3. Звітність та передача зміни",
       "seq": 5,
       "text": "Письмово передати зміну наступному майстру.",
@@ -1262,12 +1262,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m8-1",
+      "item_id": "master.e4-1",
       "role": "Майстер",
-      "group_id": "m8",
+      "group_id": "end-4",
       "group_title": "4. Завершальні перевірки та безпека",
       "seq": 1,
       "text": "Забезпечити встановлення Бактерицидних ламп на дільницях фасовки і варки.",
@@ -1280,12 +1280,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m8-2",
+      "item_id": "master.e4-2",
       "role": "Майстер",
-      "group_id": "m8",
+      "group_id": "end-4",
       "group_title": "4. Завершальні перевірки та безпека",
       "seq": 2,
       "text": "Виключити всі непотрібні прилади (кондиціонери, вентилятори, освітлення).",
@@ -1298,12 +1298,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m8-3",
+      "item_id": "master.e4-3",
       "role": "Майстер",
-      "group_id": "m8",
+      "group_id": "end-4",
       "group_title": "4. Завершальні перевірки та безпека",
       "seq": 3,
       "text": "Перевірити розміщення обладнання на відповідних місцях (візки, інвентар).",
@@ -1316,12 +1316,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m8-4",
+      "item_id": "master.e4-4",
       "role": "Майстер",
-      "group_id": "m8",
+      "group_id": "end-4",
       "group_title": "4. Завершальні перевірки та безпека",
       "seq": 4,
       "text": "Перевірити цілісність предметів зі скла та крихких матеріалів.",
@@ -1334,12 +1334,12 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
-      "item_id": "master.m9-1",
+      "item_id": "master.e5-1",
       "role": "Майстер",
-      "group_id": "m9",
+      "group_id": "end-5",
       "group_title": "5. Комунікація та підбиття підсумків",
       "seq": 1,
       "text": "Провести коротку нараду з командою для підбиття підсумків зміни.",
@@ -1352,7 +1352,7 @@
       "active_from": "2026-07-23",
       "active_to": "",
       "text_aliases": "",
-      "notes": "відновлено з даних; звірити з фронтендом майстра"
+      "notes": "звірено з фронтендом майстра"
     },
     {
       "item_id": "mech.legacy.01",
@@ -2069,420 +2069,420 @@
       "status": "alert"
     },
     {
-      "item_id": "master.m1-1",
+      "item_id": "master.s1-1",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m1-1",
+      "item_id": "master.s1-1",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m1-2",
+      "item_id": "master.s1-2",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m1-2",
+      "item_id": "master.s1-2",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m1-3",
+      "item_id": "master.s1-3",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m1-3",
+      "item_id": "master.s1-3",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m1-4",
+      "item_id": "master.s1-4",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m1-4",
+      "item_id": "master.s1-4",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m2-1",
+      "item_id": "master.s2-1",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m2-1",
+      "item_id": "master.s2-1",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m2-2",
+      "item_id": "master.s2-2",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m2-2",
+      "item_id": "master.s2-2",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m2-3",
+      "item_id": "master.s2-3",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m2-3",
+      "item_id": "master.s2-3",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m2-4",
+      "item_id": "master.s2-4",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m2-4",
+      "item_id": "master.s2-4",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m3-1",
+      "item_id": "master.s3-1",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m3-1",
+      "item_id": "master.s3-1",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m3-2",
+      "item_id": "master.s3-2",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m3-2",
+      "item_id": "master.s3-2",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m3-3",
+      "item_id": "master.s3-3",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m3-3",
+      "item_id": "master.s3-3",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m3-4",
+      "item_id": "master.s3-4",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m3-4",
+      "item_id": "master.s3-4",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m4-1",
+      "item_id": "master.s4-1",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m4-1",
+      "item_id": "master.s4-1",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m5-1",
+      "item_id": "master.e1-1",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m5-1",
+      "item_id": "master.e1-1",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m5-2",
+      "item_id": "master.e1-2",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m5-2",
+      "item_id": "master.e1-2",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m5-3",
+      "item_id": "master.e1-3",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m5-3",
+      "item_id": "master.e1-3",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m5-4",
+      "item_id": "master.e1-4",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m5-4",
+      "item_id": "master.e1-4",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m5-5",
+      "item_id": "master.e1-5",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m5-5",
+      "item_id": "master.e1-5",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m6-1",
+      "item_id": "master.e2-1",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m6-1",
+      "item_id": "master.e2-1",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m6-2",
+      "item_id": "master.e2-2",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m6-2",
+      "item_id": "master.e2-2",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m7-1",
+      "item_id": "master.e3-1",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m7-1",
+      "item_id": "master.e3-1",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m7-2",
+      "item_id": "master.e3-2",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m7-2",
+      "item_id": "master.e3-2",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m7-3",
+      "item_id": "master.e3-3",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m7-3",
+      "item_id": "master.e3-3",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m7-4",
+      "item_id": "master.e3-4",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m7-4",
+      "item_id": "master.e3-4",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m7-5",
+      "item_id": "master.e3-5",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m7-5",
+      "item_id": "master.e3-5",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m8-1",
+      "item_id": "master.e4-1",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m8-1",
+      "item_id": "master.e4-1",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m8-2",
+      "item_id": "master.e4-2",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m8-2",
+      "item_id": "master.e4-2",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m8-3",
+      "item_id": "master.e4-3",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m8-3",
+      "item_id": "master.e4-3",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m8-4",
+      "item_id": "master.e4-4",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m8-4",
+      "item_id": "master.e4-4",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
       "status": "alert"
     },
     {
-      "item_id": "master.m9-1",
+      "item_id": "master.e5-1",
       "seq": 1,
       "value": "Виконано",
       "active": "так",
       "status": "ok"
     },
     {
-      "item_id": "master.m9-1",
+      "item_id": "master.e5-1",
       "seq": 2,
       "value": "Не виконано",
       "active": "так",
