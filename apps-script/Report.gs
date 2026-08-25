@@ -22,71 +22,83 @@ function addRecipient_(list, addr) {
 }
 
 /**
- * Кому йде цей конкретний звіт. Складається з трьох частин:
+ * Кому йде звіт цього чек-листа. Список НЕ ведеться руками — він випливає
+ * з ролей у кадровій таблиці, як і все інше в цьому проєкті:
  *
- *   MAIL_TO         — постійні одержувачі ОБОХ чек-листів;
- *   MAIL_TO_MASTER  — додатково до звітів майстра;
- *   MAIL_TO_MECH    — додатково до звітів механіка (необовʼязкове);
- *   + власна пошта автора, якщо його роль це дає (mech.admin, shift.master, admin).
+ *   звіт механіка → усі, хто має reportMech   (mech.admin, admin)
+ *   звіт майстра  → усі, хто має reportMaster (shift.master, admin)
  *
- * Списки окремі саме тому, що чек-листи різні: майстрам ні до чого щоденні
- * звіти механіків, а старий застосунок майстра слав свої звіти чотирьом
- * адресатам — саме це і відтворює MAIL_TO_MASTER.
+ * Адреса — колонка O кадрової. Нова людина з потрібною роллю починає
+ * отримувати звіти одразу, звільнена — одразу перестає; правити властивості
+ * скрипта не треба, і два списки не розʼїжджаються між собою.
  *
- * Ролі mech.use пошта не належить — вона тільки здає чек-лист.
- * Дублікати прибираються, тож одна адреса в кількох списках нічого не ламає.
+ * MAIL_TO лишається ЗАПАСНИМ варіантом: якщо кадрова недоступна або в нікого
+ * з потрібною роллю не заповнений email, звіт піде туди, а не в нікуди.
  */
-function recipientsFor_(authUser, role) {
-  var to = recipients_('MAIL_TO');
-  var extraKey = (role === 'Майстер') ? 'MAIL_TO_MASTER' : 'MAIL_TO_MECH';
-  recipients_(extraKey).forEach(function (a) { addRecipient_(to, a); });
-  if (authUser && can_(authUser, 'reportEmail') && authUser.email) {
-    addRecipient_(to, authUser.email);
+function recipientsFor_(role) {
+  var perm = (role === 'Майстер') ? 'reportMaster' : 'reportMech';
+  var to = [];
+  try {
+    readEmployees_().forEach(function (e) {
+      if (e.eligible && can_(e, perm)) addRecipient_(to, e.email);
+    });
+  } catch (err) {
+    logEvent('Техніка', 'mail.hrFailed', 'кадрова недоступна: ' + err, {});
   }
-  return to;
+  if (to.length) return to;
+
+  var fallback = recipients_('MAIL_TO');
+  logEvent('Техніка', 'mail.fallback',
+           'нікого з правом ' + perm + ' і заповненим email — лист пішов на MAIL_TO', {});
+  return fallback;
 }
 
 /**
  * Хто які звіти отримає. Нічого не надсилає — тільки друкує.
- * Запускати після будь-якої зміни MAIL_TO*, перед розгортанням.
+ * Запускати після будь-якої зміни ролей або email у кадровій.
  */
 function auditRecipients() {
   var out = [];
-  ['MAIL_TO', 'MAIL_TO_MASTER', 'MAIL_TO_MECH', 'MAIL_ALERT_TO'].forEach(function (k) {
-    var v = recipients_(k);
-    out.push((v.length ? '   ' : '·  ') + k + ': ' + (v.join(', ') || 'не задано'));
-  });
+  var mech = recipientsFor_('Механік');
+  var mast = recipientsFor_('Майстер');
+
+  out.push('Звіт МЕХАНІКА отримають (' + mech.length + '):');
+  mech.forEach(function (a) { out.push('   ' + a); });
+  out.push('');
+  out.push('Звіт МАЙСТРА отримають (' + mast.length + '):');
+  mast.forEach(function (a) { out.push('   ' + a); });
 
   out.push('');
-  out.push('Звіт МЕХАНІКА отримають:');
-  out.push('   ' + recipientsFor_(null, 'Механік').join(', '));
-  out.push('Звіт МАЙСТРА отримають:');
-  out.push('   ' + recipientsFor_(null, 'Майстер').join(', '));
-
-  out.push('');
-  out.push('Що додає роль автора до його ВЛАСНОГО звіту:');
+  out.push('Звідки це береться — ролі в кадровій:');
   try {
     readEmployees_().forEach(function (e) {
       if (!e.eligible) return;
-      var what = [];
-      ['Механік', 'Майстер'].forEach(function (r) {
-        if (r === 'Механік' && !can_(e, 'submitMech')) return;
-        if (r === 'Майстер' && !can_(e, 'submitMaster')) return;
-        var base = recipientsFor_(null, r).length;
-        var withOwn = recipientsFor_(e, r).length;
-        what.push(r.toLowerCase() + ': ' +
-          (!can_(e, 'reportEmail') || !e.email ? 'своєї копії не отримує'
-            : (withOwn > base ? ('+' + e.email) : 'уже в списку')));
-      });
-      out.push('   ' + e.name + ' [' + e.roles.join(', ') + '] — ' + what.join(' · '));
+      var gets = [];
+      if (can_(e, 'reportMech')) gets.push('звіти механіків');
+      if (can_(e, 'reportMaster')) gets.push('звіти майстрів');
+      if (!gets.length) { out.push('   ' + e.name + ' [' + e.roles.join(', ') + '] — розсилки не отримує'); return; }
+      out.push('   ' + e.name + ' [' + e.roles.join(', ') + '] — ' + gets.join(' + ') +
+               ' → ' + (e.email || '⚠️ EMAIL У КОЛОНЦІ O ПОРОЖНІЙ, лист не піде'));
     });
   } catch (err) {
     out.push('   ❌ кадрова недоступна: ' + err);
   }
 
+  // Списки більше не ведуться руками — стара властивість тільки заплутає
+  var props = PropertiesService.getScriptProperties();
+  ['MAIL_TO_MASTER', 'MAIL_TO_MECH'].forEach(function (k) {
+    if (props.getProperty(k)) {
+      out.push('');
+      out.push('⚠️ Властивість ' + k + ' більше не використовується — видаліть її, ' +
+               'щоб не здавалося, ніби вона на щось впливає.');
+    }
+  });
+
   out.push('');
-  out.push('Щоденний контроль і тижневий дайджест ідуть на MAIL_ALERT_TO,');
-  out.push('а якщо він порожній — на MAIL_TO.');
+  out.push('MAIL_TO (' + (recipients_('MAIL_TO').join(', ') || 'не задано') +
+           ') — запасний варіант: спрацьовує, тільки якщо в кадровій нікого з поштою.');
+  out.push('Щоденний контроль і тижневий дайджест ідуть на MAIL_ALERT_TO, ' +
+           'а якщо він порожній — на MAIL_TO.');
 
   var msg = out.join('\n');
   Logger.log(msg);
@@ -101,10 +113,11 @@ function auditRecipients() {
  * Єдина відмінність від старого: статус береться з довідників, а не з позиції
  * кнопки, тому ❗ тепер стоїть там, де справді відхилення.
  */
-function sendReportEmail_(p, user, bizDate, cnt, alerts, photos, items, authUser) {
-  var to = recipientsFor_(authUser, p.role);
+function sendReportEmail_(p, user, bizDate, cnt, alerts, photos, items) {
+  var to = recipientsFor_(p.role);
   if (!to.length) {
-    logEvent('Техніка', 'mail.skipped', 'MAIL_TO не заданий у властивостях скрипта', {});
+    logEvent('Техніка', 'mail.skipped',
+             'нікому надсилати: у кадровій немає ролей із поштою, MAIL_TO теж порожній', {});
     return;
   }
 

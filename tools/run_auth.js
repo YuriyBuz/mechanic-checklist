@@ -118,10 +118,12 @@ t('  → user_id з довідника', sab.user_id === 'U-002');
 t('  → PIN у відповіді немає', JSON.stringify(sab).indexOf('3773') === -1);
 
 const gal = loginWithPin_('6699', 'dev4');
-t('Галагін: mech.admin + пошта', gal.success && gal.permissions.indexOf('reportEmail') > -1
-  && gal.permissions.indexOf('submitMaster') === -1);
+t('Галагін: mech.admin — здає й отримує звіти механіків',
+  gal.success && gal.permissions.indexOf('reportMech') > -1
+  && gal.permissions.indexOf('submitMaster') === -1
+  && gal.permissions.indexOf('reportMaster') === -1);
 const adm = loginWithPin_('9988', 'dev5');
-t('Бузницький: admin — обидва чек-листи', adm.permissions.length === 3);
+t('Бузницький: admin — обидва чек-листи й обидві розсилки', adm.permissions.length === 4);
 t('  і має власний user_id після addMissingEmployees()', /^U-0\d\d$/.test(adm.user_id) && adm.user_id !== 'U-000');
 t('до цього auditPins() показував, що його немає в довіднику',
   audit.indexOf('⚠ немає в 03_Працівники') > -1);
@@ -177,42 +179,61 @@ t('звіт підписано Сабадашем, а не «хто завгод
   mine.length > 0 && mine.every(r => r[6] === 'Сабадаш Геннадій Петрович'));
 
 console.log('\n── одержувачі листа ──');
-// Саме ті значення, які стоять у властивостях скрипта
-store.props['MAIL_TO']        = 'Buznitskiy7@gmail.com, Dyndarnastia@gmail.com';
-store.props['MAIL_TO_MASTER'] = 'olgagoncharukm@gmail.com, sashaalieva18@gmail.com';
-store.props['MAIL_TO_MECH']   = 'evgeniy.galagin@gmail.com';
+// Списків руками більше немає: усе випливає з ролей і колонки O кадрової
+store.props['MAIL_TO'] = 'Buznitskiy7@gmail.com';      // тільки запасний варіант
+delete store.props['MAIL_TO_MASTER'];
+delete store.props['MAIL_TO_MECH'];
 
 const want = (list, addrs) =>
   list.length === addrs.length &&
   addrs.every(a => list.some(x => x.toLowerCase() === a.toLowerCase()));
 
-const mech = recipientsFor_(null, 'Механік');
-const mast = recipientsFor_(null, 'Майстер');
-t('звіт МЕХАНІКА → рівно три адреси', want(mech,
-  ['Buznitskiy7@gmail.com', 'Dyndarnastia@gmail.com', 'evgeniy.galagin@gmail.com']));
-t('звіт МАЙСТРА → рівно чотири адреси', want(mast,
-  ['Buznitskiy7@gmail.com', 'Dyndarnastia@gmail.com', 'olgagoncharukm@gmail.com', 'sashaalieva18@gmail.com']));
+const mech = recipientsFor_('Механік');
+const mast = recipientsFor_('Майстер');
+console.log('   механік: ' + mech.join(', '));
+console.log('   майстер: ' + mast.join(', '));
+
+t('звіт МЕХАНІКА → три адреси з кадрової', want(mech,
+  ['Buznitskiy7@gmail.com', 'dyndarnastia@gmail.com', 'evgeniy.galagin@gmail.com']));
+t('звіт МАЙСТРА → чотири адреси з кадрової', want(mast,
+  ['Buznitskiy7@gmail.com', 'dyndarnastia@gmail.com', 'olgagoncharukm@gmail.com', 'sashaalieva18@gmail.com']));
 t('майстри не отримують звітів механіка',
   !mech.some(a => /olgagoncharukm|sashaalieva18/.test(a)));
 t('Галагін не отримує звітів майстра',
   !mast.some(a => /evgeniy\.galagin/.test(a)));
+t('mech.use у списках немає', !mech.concat(mast).some(a => /gora|sabadash/i.test(a)));
 
-t('mech.use автора нічого не додає — списки ті самі',
-  want(recipientsFor_(verifySession_(sab.token, 'dev3'), 'Механік'),
-       ['Buznitskiy7@gmail.com', 'Dyndarnastia@gmail.com', 'evgeniy.galagin@gmail.com']));
-t('автор, який уже в списку, не дублюється',
-  recipientsFor_(verifySession_(adm.token, 'dev5'), 'Механік').length === 3);
+// зміна ролі в кадровій діє одразу, без правок у властивостях
+const hrE = store.books['1UhdO9ALcSXk8fgWhUnMiluO4Aao6R4EP6iN4Ie__rY8'].getSheetByName('_REF_Employees');
+hrE.getRange(5, 18).setValue("mech.admin");        // Гончарук: рядок 5 (1 — заголовок): +роль «отримувати звіти механіків»
+t('нова роль одразу додає адресу в розсилку',
+  recipientsFor_('Механік').some(a => /olgagoncharukm/.test(a)));
+hrE.getRange(5, 18).setValue("");
+t('  і одразу прибирає, коли роль зняли',
+  !recipientsFor_('Механік').some(a => /olgagoncharukm/.test(a)));
 
-store.props['MAIL_TO'] = 'Buznitskiy7@gmail.com, DYNDARNASTIA@GMAIL.COM';
-t('різний регістр не подвоює адресу', recipientsFor_(null, 'Майстер').length === 4);
-store.props['MAIL_TO'] = 'Buznitskiy7@gmail.com, Dyndarnastia@gmail.com';
+// звільнення теж
+hrE.getRange(4, 8).setValue('fired');              // Галагін
+t('звільнений випадає з розсилки',
+  !recipientsFor_('Механік').some(a => /evgeniy\.galagin/.test(a)));
+hrE.getRange(4, 8).setValue('active');
+
+// порожній email не ламає лист
+hrE.getRange(4, 15).setValue('');
+t('порожній email просто пропускається', recipientsFor_('Механік').length === 2);
+hrE.getRange(4, 15).setValue('evgeniy.galagin@gmail.com');
 
 console.log('\n── auditRecipients() ──');
 const ar = auditRecipients();
 console.log(ar.split('\n').map(l => '  ' + l).join('\n'));
-t('auditRecipients показує обидва списки',
+t('аудит показує обидва списки',
   ar.indexOf('Звіт МЕХАНІКА') > -1 && ar.indexOf('Звіт МАЙСТРА') > -1);
-t('  і не падає на кадровій', ar.indexOf('кадрова недоступна') === -1);
+t('  і попереджає про застарілі властивості', (() => {
+  store.props['MAIL_TO_MASTER'] = 'хтось@example.com';
+  const a2 = auditRecipients();
+  delete store.props['MAIL_TO_MASTER'];
+  return a2.indexOf('більше не використовується') > -1;
+})());
 
 console.log('\n── відповідь клієнтові ──');
 const lr = loginResponse_(loginWithPin_('9988', 'dev5'));

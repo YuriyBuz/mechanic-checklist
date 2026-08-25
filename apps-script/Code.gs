@@ -152,7 +152,7 @@ function submitReport_(p) {
   appendRows(SH.PHOTOS, photos.rows);
 
   try {
-    sendReportEmail_(p, user, bizDate, cnt, alerts, photos, emailItems, auth.user);
+    sendReportEmail_(p, user, bizDate, cnt, alerts, photos, emailItems);
   } catch (mailErr) {
     // звіт уже збережено — розсилка не має його скасовувати, але мовчати теж не можна
     logEvent('Техніка', 'mail.failed', String(mailErr), { report_id: p.report_id });
@@ -226,7 +226,7 @@ function sessionUser_(u) {
     can: {
       mech: can_(u, 'submitMech'),
       master: can_(u, 'submitMaster'),
-      email: can_(u, 'reportEmail') && u.email.indexOf('@') > -1
+      email: (can_(u, 'reportMech') || can_(u, 'reportMaster')) && u.email.indexOf('@') > -1
     }
   };
 }

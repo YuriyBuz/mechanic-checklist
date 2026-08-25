@@ -37,13 +37,17 @@ var ATTEMPT_WINDOW_SECONDS = 300;
  *
  *   submitMech   — здавати чек-лист механіка
  *   submitMaster — здавати чек-лист майстра
- *   reportEmail  — отримувати власний звіт на свою пошту (колонка O кадрової)
+ *   reportMech   — отримувати НА ПОШТУ всі звіти механіків
+ *   reportMaster — отримувати НА ПОШТУ всі звіти майстрів
+ *
+ * Адреса береться з колонки O кадрової. Окремого списку одержувачів немає:
+ * кому надсилати — випливає з ролі, як і все інше.
  */
 var ROLE_PERMISSIONS = {
   'mech.use':     ['submitMech'],
-  'mech.admin':   ['submitMech', 'reportEmail'],
-  'shift.master': ['submitMaster', 'reportEmail'],
-  'admin':        ['submitMech', 'submitMaster', 'reportEmail']
+  'mech.admin':   ['submitMech', 'reportMech'],
+  'shift.master': ['submitMaster', 'reportMaster'],
+  'admin':        ['submitMech', 'submitMaster', 'reportMech', 'reportMaster']
 };
 
 
@@ -302,7 +306,8 @@ function auditPins() {
     lines.push('   ' + e.name + '  [' + e.roles.join(', ') + ']  ' +
       (can_(e, 'submitMech') ? 'механік ' : '') +
       (can_(e, 'submitMaster') ? 'майстер ' : '') +
-      (can_(e, 'reportEmail') ? ('пошта→' + (e.email || 'НЕ ЗАДАНО')) : '') +
+      ((can_(e, 'reportMech') || can_(e, 'reportMaster'))
+        ? ('пошта→' + (e.email || 'НЕ ЗАДАНО')) : '') +
       '  → ' + (e.user_id === 'U-000' ? '⚠ немає в ' + SH.EMPLOYEES : e.user_id));
   });
 
@@ -330,7 +335,7 @@ function auditPins() {
   else lines.push('', 'Виправляється тільки в кадровій таблиці, колонка Q.');
 
   var noMail = eligible.filter(function (e) {
-    return can_(e, 'reportEmail') && e.email.indexOf('@') === -1;
+    return (can_(e, 'reportMech') || can_(e, 'reportMaster')) && e.email.indexOf('@') === -1;
   });
   if (noMail.length) {
     lines.push('');
@@ -414,16 +419,18 @@ function authSelfTest() {
   check('токен прив\'язаний до пристрою', other && other.d === 'DEV-1');
 
   var c1 = permissionsFor_(splitRoles_('zip.admin mech.admin'));
-  check('mech.admin → механік + пошта',
-        c1.indexOf('submitMech') > -1 && c1.indexOf('reportEmail') > -1 && c1.indexOf('submitMaster') === -1);
+  check('mech.admin → здає механіка і отримує звіти механіків',
+        c1.indexOf('submitMech') > -1 && c1.indexOf('reportMech') > -1 &&
+        c1.indexOf('submitMaster') === -1 && c1.indexOf('reportMaster') === -1);
   var c2 = permissionsFor_(splitRoles_('mech.use,zip.use'));
-  check('mech.use → механік без пошти',
-        c2.indexOf('submitMech') > -1 && c2.indexOf('reportEmail') === -1);
+  check('mech.use → тільки здає, звітів не отримує',
+        c2.length === 1 && c2.indexOf('submitMech') > -1);
   var c3 = permissionsFor_(splitRoles_('shift.master'));
-  check('shift.master → майстер + пошта',
-        c3.indexOf('submitMaster') > -1 && c3.indexOf('reportEmail') > -1 && c3.indexOf('submitMech') === -1);
+  check('shift.master → здає майстра і отримує звіти майстрів',
+        c3.indexOf('submitMaster') > -1 && c3.indexOf('reportMaster') > -1 &&
+        c3.indexOf('submitMech') === -1 && c3.indexOf('reportMech') === -1);
   var c4 = permissionsFor_(splitRoles_('admin'));
-  check('admin → обидва чек-листи + пошта', c4.length === 3);
+  check('admin → обидва чек-листи і обидві розсилки', c4.length === 4);
   var c5 = permissionsFor_(splitRoles_('qc.use supply.use'));
   check('чужі ролі доступу не дають', c5.length === 0);
 
