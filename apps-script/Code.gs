@@ -19,7 +19,9 @@
  * поставить text/plain, preflight не виникне і відповідь буде читабельною.
  */
 
-var APP_VERSION = 'checklist-2026-08-23';
+// Версія бекенду. Її віддає ?action=ping і вона лягає в кожен звіт —
+// саме за нею видно, чи розгортання справді підхопило новий код.
+var APP_VERSION = 'checklist-2026-08-25-auth';
 
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) || 'getConfig';
