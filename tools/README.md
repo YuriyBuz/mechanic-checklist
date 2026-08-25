@@ -57,3 +57,22 @@ Tailwind вантажиться з CDN, якого в пісочниці нем�
 
     npx tailwindcss@3 -i tw.css -o tw.out.css --content index.html --minify
     TW_CSS=$PWD/tw.out.css node tools/mock_server.js
+
+## Чому .gs не можна віддавати з керуючими байтами
+
+Редактор Apps Script відхиляє файл із сирим нульовим байтом:
+«SyntaxError: Invalid or unexpected token». Через буфер обміну такий байт
+губиться, тому вставлений код працює, а завантажений файл — ні.
+
+Перевірка перед тим, як віддавати файли:
+
+    python3 - <<'EOF'
+    import glob, io
+    for f in sorted(glob.glob('apps-script/*.gs')):
+        d = io.open(f, 'rb').read()
+        bad = [b for b in d if b < 9 or b in (11, 12) or (14 <= b < 32)]
+        print(('NOK ' if bad else 'OK  ') + f)
+    EOF
+
+Роздільники й службові символи писати escape-послідовностями (\u0000),
+а не самим символом.

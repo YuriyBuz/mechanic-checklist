@@ -164,7 +164,10 @@ function applySheetDef_(s, def) {
 function seedDictionaries() {
   var res = [];
   res.push(upsert_(SH.ITEMS, SEED_ITEMS, function (r) { return r[0]; }));
-  res.push(upsert_(SH.OPTIONS, SEED_OPTIONS, function (r) { return r[0] + ' ' + r[2]; }));
+  // Ключ варіанта — item_id + value. Роздільник записаний escape-послідовністю,
+  // а не самим символом: сирий нульовий байт у файлі редактор Apps Script
+  // відхиляє як «Invalid or unexpected token». Значення ключа те саме.
+  res.push(upsert_(SH.OPTIONS, SEED_OPTIONS, function (r) { return r[0] + '\u0000' + r[2]; }));
   res.push(upsert_(SH.EMPLOYEES, SEED_EMPLOYEES, function (r) { return r[0]; }));
   var msg = 'Пункти: ' + res[0] + ' · Варіанти: ' + res[1] + ' · Працівники: ' + res[2];
   logEvent('Схема', 'seedDictionaries', msg);
