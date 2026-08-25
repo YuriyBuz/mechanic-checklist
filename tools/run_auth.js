@@ -81,6 +81,27 @@ console.log('\n── auditPins() ──');
 const audit = auditPins();
 console.log(audit.split('\n').map(l => '  ' + l).join('\n'));
 
+console.log('\n── addMissingEmployees() ──');
+const before = readTable('03_Працівники').rows.filter(r => r[0]).length;
+console.log(addMissingEmployees().split('\n').map(l => '  ' + l).join('\n'));
+const after = readTable('03_Працівники').rows.filter(r => r[0]).length;
+t('додано рівно двох (Диндар і Бузницький)', after - before === 2);
+const staff = readTable('03_Працівники').rows;
+const dyn = staff.filter(r => String(r[1]).indexOf('Диндар') > -1)[0];
+t('  Диндар зʼявилася', !!dyn);
+t('  роль «Керівник» (обидва чек-листи)', dyn && dyn[2] === 'Керівник');
+t('  ід продовжує нумерацію', dyn && /^U-0\d\d$/.test(dyn[0]) && dyn[0] !== 'U-000');
+t('  активна', dyn && dyn[3] === true);
+t('звільненого не додано',
+  !staff.some(r => String(r[1]).indexOf('Свінцов Михайло Генадійович') > -1));
+t('чужих ролей не додано', !staff.some(r => String(r[1]).indexOf('Бондаренко') > -1));
+const repeat = addMissingEmployees();
+t('повторний запуск нічого не робить', repeat.indexOf('вже є в') > -1);
+t('  і рядків не побільшало',
+  readTable('03_Працівники').rows.filter(r => r[0]).length === after);
+t('тепер вхід дає справжній user_id, а не U-000',
+  loginWithPin_('9988', 'devX').user_id !== 'U-000');
+
 console.log('\n── вхід ──');
 t('невірний PIN не пускає', loginWithPin_('0007', 'dev1').code === 'BAD_PIN');
 t('порожній PIN не пускає', loginWithPin_('', 'dev1').code === 'BAD_PIN');
@@ -100,8 +121,10 @@ const gal = loginWithPin_('6699', 'dev4');
 t('Галагін: mech.admin + пошта', gal.success && gal.permissions.indexOf('reportEmail') > -1
   && gal.permissions.indexOf('submitMaster') === -1);
 const adm = loginWithPin_('9988', 'dev5');
-t('Бузницький: admin — обидва чек-листи', adm.permissions.length === 3 && adm.user_id === 'U-000');
-t('  (немає в 03_Працівники → U-000, видно в auditPins)', audit.indexOf('⚠ немає в 03_Працівники') > -1);
+t('Бузницький: admin — обидва чек-листи', adm.permissions.length === 3);
+t('  і має власний user_id після addMissingEmployees()', /^U-0\d\d$/.test(adm.user_id) && adm.user_id !== 'U-000');
+t('до цього auditPins() показував, що його немає в довіднику',
+  audit.indexOf('⚠ немає в 03_Працівники') > -1);
 t('звільнений не заходить', loginWithPin_('7777', 'dev6').code === 'BAD_PIN');
 t('чужа роль (qc.use) доступу не має', permissionsFor_(['qc.use']).length === 0);
 

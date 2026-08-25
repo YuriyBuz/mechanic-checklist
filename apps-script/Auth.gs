@@ -344,6 +344,53 @@ function auditPins() {
 }
 
 /**
+ * Заводить у 03_Працівники тих, хто має доступ до чек-листа, але кого там ще
+ * немає. Без цього їхні звіти лягають на U-000 «особу не встановлено»:
+ * у 12_Відповідях їх не відрізнити ні від кого, і розклад їх не бачить.
+ *
+ * Кадрову не чіпає — тільки довідник звітів. Повторний запуск нічого не робить.
+ */
+function addMissingEmployees() {
+  return withLock(function () {
+    var idx = employeeIndex_();
+    var t = readTable(SH.EMPLOYEES);
+    var maxN = 0;
+    t.rows.forEach(function (r) {
+      var m = /^U-(\d+)$/.exec(String(r[0]).trim());
+      if (m) maxN = Math.max(maxN, Number(m[1]));
+    });
+
+    var add = [], out = [];
+    readEmployees_().forEach(function (e) {
+      if (!e.eligible) return;
+      if (matchUserId_(idx, e.name)) return;
+
+      maxN++;
+      var uid = 'U-' + ('00' + maxN).slice(-3);
+      // роль тут — це те, у якому чек-листі людина зʼявляється історично;
+      // справжні права однаково дає кадрова
+      var role = (can_(e, 'submitMech') && can_(e, 'submitMaster')) ? 'Керівник'
+               : (can_(e, 'submitMech') ? 'Механік' : 'Майстер');
+      add.push([uid, e.name, role, true, '']);
+      idx[normName_(e.name)] = uid;          // щоб не додати двічі за один прогін
+      out.push('   ' + uid + '  ' + e.name + '  [' + e.roles.join(', ') + ']  → ' + role);
+    });
+
+    if (!add.length) {
+      var msg0 = 'Усі, хто має доступ до чек-листа, вже є в ' + SH.EMPLOYEES + '.';
+      Logger.log(msg0);
+      return msg0;
+    }
+
+    appendRows(SH.EMPLOYEES, add);
+    var msg = 'Додано в ' + SH.EMPLOYEES + ': ' + add.length + '\n' + out.join('\n');
+    logEvent('Схема', 'addMissingEmployees', 'додано ' + add.length);
+    Logger.log(msg);
+    return msg;
+  }, 20000);
+}
+
+/**
  * Самоперевірка: підпис токена, прострочення, підробка, прив'язка до пристрою,
  * розбір ролей. Кадрову таблицю читає тільки для звірки ПІБ.
  */
