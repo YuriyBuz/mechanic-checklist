@@ -45,7 +45,7 @@ class SS {
   insertSheet(n) { const s = new Sheet(n); this.sheets.push(s); return s; }
 }
 const bytes = b => Array.from(b).map(x => (x > 127 ? x - 256 : x));   // Java віддає знакові байти
-const store = { books: {}, props: {}, cache: {}, log: [] };
+const store = { books: {}, props: {}, cache: {}, log: [], mail: [] };
 
 global.SpreadsheetApp = {
   getActive: () => store.books.active,
@@ -77,7 +77,7 @@ global.LockService = { getScriptLock: () => ({ tryLock: () => true, releaseLock(
 global.Logger = { log: m => store.log.push(m) };
 global.Session = { getEffectiveUser: () => ({ getEmail: () => 'stub@example.com' }),
                    getActiveUser: () => ({ getEmail: () => 'stub@example.com' }) };
-global.MailApp = { sendEmail: o => store.log.push('MAIL → ' + o.to) };
+global.MailApp = { sendEmail: o => { store.mail.push(o); store.log.push('MAIL → ' + o.to); } };
 global.ContentService = { MimeType: { JSON: 'json' },
   createTextOutput: t => ({ setMimeType: () => t }) };
 global.DriveApp = { getFolderById: () => { throw new Error('no drive in stub'); } };

@@ -36,11 +36,14 @@ const ITEMS_HEAD = ['item_id','role','group_id','group_title','seq','text','type
   'labels','visible_on','photo_required','norm_min_1','norm_max_1','warn_min_1','warn_max_1',
   'norm_min_2','norm_max_2','warn_min_2','warn_max_2','norm_min_3','norm_max_3','warn_min_3','warn_max_3',
   'active_from','active_to','text_aliases','notes'];
-const item = (id, role, txt, type) => { const r = Array(28).fill(''); r[0]=id; r[1]=role;
-  r[3]='Група'; r[4]=1; r[5]=txt; r[6]=type; r[7]=1; r[10]='both'; return r; };
+const item = (id, role, txt, type, norms) => { const r = Array(28).fill(''); r[0]=id; r[1]=role;
+  r[3]='Група'; r[4]=1; r[5]=txt; r[6]=type; r[7]=1; r[10]='both';
+  // norms = [norm_min_1, norm_max_1] — щоб перевіряти позначку відхилення в темі
+  if (norms) { r[12]=norms[0]; r[13]=norms[1]; }
+  return r; };
 
 const book = new SS('15Pmhi9IvQZAyVbGpPbzTgwN-ETPpRmYSXiDjLkLEnhU', [
-  new Sheet('01_Пункти', [ITEMS_HEAD, item('mech.1-1','Механік','Температура компресорів','number'),
+  new Sheet('01_Пункти', [ITEMS_HEAD, item('mech.1-1','Механік','Температура компресорів','number', [15, 85]),
                           item('mast.1-1','Майстер','Стан цеху','binary')]),
   new Sheet('02_Варіанти', [['item_id','seq','value','status','active'], ['mast.1-1',1,'Так','ok','так']]),
   new Sheet('03_Працівники', [['user_id','full_name','role','active','aliases'],
@@ -234,6 +237,33 @@ t('  і попереджає про застарілі властивості', 
   delete store.props['MAIL_TO_MASTER'];
   return a2.indexOf('більше не використовується') > -1;
 })());
+
+console.log('\n── тема листа ──');
+store.props['PHOTO_FOLDER_ID'] = '';
+store.mail.length = 0;
+const sendAs = (role, item, value, values) => {
+  store.mail.length = 0;
+  submitReport_({
+    report_id: 'M' + Math.random(), business_date: '2026-08-25',
+    stage: 'Початок зміни', role: role, token: adm.token, deviceId: 'dev5',
+    items: [{ item_id: item, value: value, values: values || [], comment: '' }]
+  });
+  return store.mail.length ? store.mail[0] : null;
+};
+
+const okMail = sendAs('Механік', 'mech.1-1', '', ['55', '60']);        // у нормі
+t('чистий звіт механіка', okMail && okMail.subject === '🔧 Звіт (Механік): Початок зміни - Юрій Бузницький');
+const badMail = sendAs('Механік', 'mech.1-1', '', ['92', '60']);       // 92 > норми 85
+t('звіт із відхиленням позначено ❗', badMail && badMail.subject.indexOf('❗ 🔧') === 0);
+const mastMail = sendAs('Майстер', 'mast.1-1', 'Так');
+t('звіт майстра має свою піктограму', mastMail && mastMail.subject.indexOf('📋') === 0);
+t('  і різні теми — різні ланцюжки',
+  okMail.subject !== badMail.subject && okMail.subject !== mastMail.subject);
+t('заголовок УСЕРЕДИНІ листа без піктограм',
+  okMail.htmlBody.indexOf('<h2 style="color: #047857; margin-bottom: 5px;">Звіт (Механік): Початок зміни') > -1);
+console.log('   ' + okMail.subject);
+console.log('   ' + badMail.subject);
+console.log('   ' + mastMail.subject);
 
 console.log('\n── відповідь клієнтові ──');
 const lr = loginResponse_(loginWithPin_('9988', 'dev5'));

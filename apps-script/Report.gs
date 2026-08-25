@@ -123,7 +123,17 @@ function sendReportEmail_(p, user, bizDate, cnt, alerts, photos, items) {
 
   var role = p.role || 'Механік';
   var who = user.name || p.user_name || '';
-  var subject = 'Звіт (' + role + '): ' + p.stage + ' - ' + who;
+  // Заголовок усередині листа лишається такий самий, як був.
+  var titleText = 'Звіт (' + role + '): ' + p.stage + ' - ' + who;
+
+  /* А в темі листа — піктограма, щоб звіт було видно у списку пошти серед
+     десятків інших роботів, і позначка стану, щоб зміну з відхиленнями
+     видно було НЕ ВІДКРИВАЮЧИ. Саме через це пів року 303 сигнали лежали
+     непоміченими: усі листи виглядали однаково.
+     Різна тема ще й розводить чисті звіти й проблемні в окремі ланцюжки. */
+  var icon = (role === 'Майстер') ? '📋' : '🔧';
+  var mark = cnt.alert ? '❗ ' : (cnt.warn ? '⚠️ ' : '');
+  var subject = mark + icon + ' ' + titleText;
 
   // групуємо за категоріями, зберігаючи порядок появи — як робив старий скрипт
   var order = [], grouped = {};
@@ -145,7 +155,7 @@ function sendReportEmail_(p, user, bizDate, cnt, alerts, photos, items) {
   });
 
   var html = '' +
-    '<h2 style="color: #047857; margin-bottom: 5px;">' + esc_(subject) + '</h2>' +
+    '<h2 style="color: #047857; margin-bottom: 5px;">' + esc_(titleText) + '</h2>' +
     '<p style="margin-top: 0;"><strong>Дата:</strong> ' + esc_(bizDate) + ' ' + esc_(localTime()) + '</p>' +
     '<hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 20px;">';
 
@@ -258,7 +268,7 @@ function checkSchedule() {
         missing.map(esc_).join('<br>') + '</p>' : '') +
       (dupes.length ? '<p><b>Здано більше одного разу:</b><br>' + dupes.map(esc_).join('<br>') + '</p>' : '') +
       '</div>';
-    MailApp.sendEmail({ to: to.join(','), subject: 'Чек-лист за ' + day + ': є питання', htmlBody: body });
+    MailApp.sendEmail({ to: to.join(','), subject: '🔔 Чек-лист за ' + day + ': є питання', htmlBody: body });
   }
   var msg = 'пропущено: ' + (missing.join(', ') || '—') + '; дублі: ' + (dupes.join(', ') || '—');
   logEvent('Контроль', 'checkSchedule', msg);
@@ -308,7 +318,7 @@ function weeklyDigest() {
     html += '</table><p style="color:#64748b;font-size:12px">колонки: відхилень · попереджень</p>';
   }
   html += '</div>';
-  MailApp.sendEmail({ to: to.join(','), subject: 'Чек-лист: відхилення за тиждень', htmlBody: html });
+  MailApp.sendEmail({ to: to.join(','), subject: '📊 Чек-лист: відхилення за тиждень', htmlBody: html });
   logEvent('Контроль', 'weeklyDigest', 'позицій у дайджесті: ' + list.length);
   return 'відправлено, позицій: ' + list.length;
 }
