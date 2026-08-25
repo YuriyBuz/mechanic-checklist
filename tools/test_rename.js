@@ -44,7 +44,15 @@ t('відповідь механіка ціла', ans.indexOf('mech.1-1')>-1);
 t('варіанти перепривʼязані', readTable('02_Варіанти').rows.map(r=>r[0]).indexOf('master.s1-1')>-1);
 t('фото перепривʼязано', readTable('13_Фото').rows[0][2]==='master.e5-1');
 const again = renameMasterItems();
-t('повторний запуск нічого не робить', again.indexOf('Нічого перейменовувати')===0);
+t('повторний запуск нічого не робить', again.indexOf('Уже перейменовано') > -1);
+t('  і про це видно в журналі', store.log[store.log.length - 1] === again);
 console.log('   ' + again);
+
+// порожній довідник — теж має сказати, що робити, а не мовчати
+store.books.active.getSheetByName('01_Пункти').g.length = 1;
+const empty = renameMasterItems();
+t('на порожньому довіднику підказує seedDictionaries()', empty.indexOf('seedDictionaries') > -1);
+t('  і теж пише в журнал', store.log[store.log.length - 1] === empty);
+console.log('   ' + empty);
 console.log('\n' + (fails ? '❌ ПОМИЛОК: '+fails : '✅ Усі перевірки пройдено'));
 process.exit(fails?1:0);

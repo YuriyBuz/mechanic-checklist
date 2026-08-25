@@ -398,8 +398,15 @@ function renameMasterItems() {
       var already = it.rows.filter(function (r) {
         return /^master\.[se]\d-/.test(String(r[it.col.item_id]));
       }).length;
-      return 'Нічого перейменовувати: пунктів master.m* немає' +
-             (already ? (', а master.s*/e* уже ' + already) : '') + '.';
+      // Мовчазний вихід — погана порада: у журналі не видно ані «зроблено»,
+      // ані «нічого робити», і незрозуміло, чи функція взагалі відпрацювала.
+      var none = already
+        ? ('✅ Уже перейменовано: пунктів master.s*/e* — ' + already +
+           ', жодного master.m* не лишилось. Повторний запуск нічого не змінює.')
+        : ('· Пунктів майстра в ' + SH.ITEMS + ' не знайдено взагалі — ані master.m*, ' +
+           'ані master.s*/e*. Схоже, довідник ще не засіяно: запустіть seedDictionaries().');
+      Logger.log(none);
+      return none;
     }
     it.sheet.getRange(2, 1, rows.length, it.header.length).setValues(rows);
     out.push(SH.ITEMS + ': перейменовано ' + itemsChanged);

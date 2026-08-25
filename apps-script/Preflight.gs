@@ -89,6 +89,12 @@ function preflight() {
     var emp = readEmployees_().filter(function (x) { return x.eligible; });
     say(emp.length > 0, 'Кадрова таблиця: доступ до чек-листа мають ' + emp.length +
         ' працівників (подробиці — auditPins())');
+    var idx = employeeIndex_();
+    var orphans = emp.filter(function (x) { return !matchUserId_(idx, x.name); });
+    if (orphans.length) {
+      say(false, 'Немає в 03_Працівники: ' + orphans.map(function (x) { return x.name; }).join(', ') +
+                 ' — їхні звіти ляжуть на U-000. Запустіть addMissingEmployees()');
+    }
   } catch (e) {
     say(false, 'Кадрова таблиця НЕдоступна: ' + e);
   }
@@ -105,7 +111,24 @@ function preflight() {
     var vals = legacy.getDataRange().getValues();
     var n = 0;
     vals.forEach(function (r) { if (String(r[6] || '').indexOf('Чек-лист') > -1) n++; });
-    say(n > 0, 'Лист1: ' + vals.length + ' рядків, з них звітів ' + n + ' (очікується 352)');
+    say(n > 0, 'Лист1: ' + vals.length + ' рядків, з них звітів ' + n + ' (архів, тільки читання)');
+  }
+
+  // Чи переведені пункти майстра на ід живого фронтенду
+  var itemsSheet = ss_.getSheetByName('01_Пункти');
+  if (itemsSheet && itemsSheet.getLastRow() > 1) {
+    var ids = itemsSheet.getRange(2, 1, itemsSheet.getLastRow() - 1, 1).getValues()
+      .map(function (r) { return String(r[0]); });
+    var oldIds = ids.filter(function (i) { return /^master\.m\d-/.test(i); }).length;
+    var newIds = ids.filter(function (i) { return /^master\.[se]\d-/.test(i); }).length;
+    if (oldIds) {
+      say(false, 'Пункти майстра ще на старих ід (master.m*): ' + oldIds +
+                 ' — запустіть renameMasterItems()');
+    } else if (newIds) {
+      say(true, 'Пункти майстра на ід фронтенду (master.s*/e*): ' + newIds);
+    } else {
+      say(false, 'Пунктів майстра в 01_Пункти немає — потрібен seedDictionaries()');
+    }
   }
 
   ['01_Пункти', '02_Варіанти', '03_Працівники',
