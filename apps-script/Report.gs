@@ -13,22 +13,84 @@ function recipients_(key) {
   return (v || '').split(',').map(function (s) { return s.trim(); }).filter(String);
 }
 
+/** Додає адресу, якщо її ще немає (регістр не має значення). */
+function addRecipient_(list, addr) {
+  var a = String(addr || '').trim();
+  if (!a || a.indexOf('@') === -1) return;
+  var has = list.some(function (x) { return x.toLowerCase() === a.toLowerCase(); });
+  if (!has) list.push(a);
+}
+
 /**
- * Кому йде цей конкретний звіт: постійний список MAIL_TO плюс власна пошта
- * автора, якщо його роль це дає (mech.admin, shift.master, admin).
+ * Кому йде цей конкретний звіт. Складається з трьох частин:
+ *
+ *   MAIL_TO         — постійні одержувачі ОБОХ чек-листів;
+ *   MAIL_TO_MASTER  — додатково до звітів майстра;
+ *   MAIL_TO_MECH    — додатково до звітів механіка (необовʼязкове);
+ *   + власна пошта автора, якщо його роль це дає (mech.admin, shift.master, admin).
+ *
+ * Списки окремі саме тому, що чек-листи різні: майстрам ні до чого щоденні
+ * звіти механіків, а старий застосунок майстра слав свої звіти чотирьом
+ * адресатам — саме це і відтворює MAIL_TO_MASTER.
  *
  * Ролі mech.use пошта не належить — вона тільки здає чек-лист.
- * Якщо якийсь керівник має отримувати ВСІ звіти, а не лише свої, його адресу
- * треба дописати в MAIL_TO: роль на це не впливає.
+ * Дублікати прибираються, тож одна адреса в кількох списках нічого не ламає.
  */
-function recipientsFor_(authUser) {
+function recipientsFor_(authUser, role) {
   var to = recipients_('MAIL_TO');
+  var extraKey = (role === 'Майстер') ? 'MAIL_TO_MASTER' : 'MAIL_TO_MECH';
+  recipients_(extraKey).forEach(function (a) { addRecipient_(to, a); });
   if (authUser && can_(authUser, 'reportEmail') && authUser.email) {
-    var own = String(authUser.email).trim();
-    var has = to.some(function (a) { return a.toLowerCase() === own.toLowerCase(); });
-    if (!has) to.push(own);
+    addRecipient_(to, authUser.email);
   }
   return to;
+}
+
+/**
+ * Хто які звіти отримає. Нічого не надсилає — тільки друкує.
+ * Запускати після будь-якої зміни MAIL_TO*, перед розгортанням.
+ */
+function auditRecipients() {
+  var out = [];
+  ['MAIL_TO', 'MAIL_TO_MASTER', 'MAIL_TO_MECH', 'MAIL_ALERT_TO'].forEach(function (k) {
+    var v = recipients_(k);
+    out.push((v.length ? '   ' : '·  ') + k + ': ' + (v.join(', ') || 'не задано'));
+  });
+
+  out.push('');
+  out.push('Звіт МЕХАНІКА отримають:');
+  out.push('   ' + recipientsFor_(null, 'Механік').join(', '));
+  out.push('Звіт МАЙСТРА отримають:');
+  out.push('   ' + recipientsFor_(null, 'Майстер').join(', '));
+
+  out.push('');
+  out.push('Що додає роль автора до його ВЛАСНОГО звіту:');
+  try {
+    readEmployees_().forEach(function (e) {
+      if (!e.eligible) return;
+      var what = [];
+      ['Механік', 'Майстер'].forEach(function (r) {
+        if (r === 'Механік' && !can_(e, 'submitMech')) return;
+        if (r === 'Майстер' && !can_(e, 'submitMaster')) return;
+        var base = recipientsFor_(null, r).length;
+        var withOwn = recipientsFor_(e, r).length;
+        what.push(r.toLowerCase() + ': ' +
+          (!can_(e, 'reportEmail') || !e.email ? 'своєї копії не отримує'
+            : (withOwn > base ? ('+' + e.email) : 'уже в списку')));
+      });
+      out.push('   ' + e.name + ' [' + e.roles.join(', ') + '] — ' + what.join(' · '));
+    });
+  } catch (err) {
+    out.push('   ❌ кадрова недоступна: ' + err);
+  }
+
+  out.push('');
+  out.push('Щоденний контроль і тижневий дайджест ідуть на MAIL_ALERT_TO,');
+  out.push('а якщо він порожній — на MAIL_TO.');
+
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
 }
 
 /**
@@ -40,7 +102,7 @@ function recipientsFor_(authUser) {
  * кнопки, тому ❗ тепер стоїть там, де справді відхилення.
  */
 function sendReportEmail_(p, user, bizDate, cnt, alerts, photos, items, authUser) {
-  var to = recipientsFor_(authUser);
+  var to = recipientsFor_(authUser, p.role);
   if (!to.length) {
     logEvent('Техніка', 'mail.skipped', 'MAIL_TO не заданий у властивостях скрипта', {});
     return;

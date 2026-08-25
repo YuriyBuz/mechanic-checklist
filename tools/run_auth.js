@@ -17,12 +17,12 @@ const e = (id, name, short, pos, job, st, mail, pin, extra, final) => {
 const HR_EMP = [HR_HEAD,
   e('EMP-0061','Анастасія Диндар','Анастасія Д.','','','active','dyndarnastia@gmail.com','8899','admin'),
   e('EMP-0001','Бондаренко Валерій Валентинович','Бондаренко В. В.','POS-010','Оператор-налагоджувальник','active','','1111'),
-  e('EMP-0005','Галагін Євгеній Ярославович','Галагін Є. Я.','POS-003','Головний інженер','active','','6699'),
-  e('EMP-0006','Гончарук Ольга Михайлівна','Гончарук О. М.','POS-004','Майстер зміни','active','','1111'),
+  e('EMP-0005','Галагін Євгеній Ярославович','Галагін Є. Я.','POS-003','Головний інженер','active','evgeniy.galagin@gmail.com','6699'),
+  e('EMP-0006','Гончарук Ольга Михайлівна','Гончарук О. М.','POS-004','Майстер зміни','active','olgagoncharukm@gmail.com','1111'),
   e('EMP-0007','Гора Андрій Олександрович','Гора А. О.','POS-005','Механік зміни','active','','1111'),
   e('EMP-0018','Максімюк Анатолій Вікторович','Максімюк А. В.','POS-006','Налагоджувальник','active','','1111'),
   e('EMP-0041','Сабадаш Геннадій Петрович','Сабадаш Г. П.','POS-005','Механік зміни','active','','3773'),
-  e('EMP-0032','Шута Олександра Сергіівна','Шута О. С.','POS-004','Майстер зміни','active','','1111'),
+  e('EMP-0032','Шута Олександра Сергіівна','Шута О. С.','POS-004','Майстер зміни','active','sashaalieva18@gmail.com','1111'),
   e('EMP-0062','Юрій Бузницький','Юрій Б.','','','active','Buznitskiy7@gmail.com','9988','admin'),
   e('EMP-0049','Свінцов Михайло Генадійович','Свінцов М. Г.','POS-005','Механік зміни','fired','','7777')];
 const HR_POS = [['pos_id','назва посади','підрозділ','ролі типові'],
@@ -177,13 +177,42 @@ t('звіт підписано Сабадашем, а не «хто завгод
   mine.length > 0 && mine.every(r => r[6] === 'Сабадаш Геннадій Петрович'));
 
 console.log('\n── одержувачі листа ──');
-store.props['MAIL_TO'] = 'engineer@example.com';
-t('mech.use → пошта автора не додається',
-  recipientsFor_(verifySession_(sab.token, 'dev3')).join() === 'engineer@example.com');
-t('admin → додається власна пошта',
-  recipientsFor_(verifySession_(adm.token, 'dev5')).join() === 'engineer@example.com,Buznitskiy7@gmail.com');
-store.props['MAIL_TO'] = 'engineer@example.com,buznitskiy7@gmail.com';
-t('дубль пошти не додається', recipientsFor_(verifySession_(adm.token, 'dev5')).length === 2);
+// Саме ті значення, які стоять у властивостях скрипта
+store.props['MAIL_TO']        = 'Buznitskiy7@gmail.com, Dyndarnastia@gmail.com';
+store.props['MAIL_TO_MASTER'] = 'olgagoncharukm@gmail.com, sashaalieva18@gmail.com';
+store.props['MAIL_TO_MECH']   = 'evgeniy.galagin@gmail.com';
+
+const want = (list, addrs) =>
+  list.length === addrs.length &&
+  addrs.every(a => list.some(x => x.toLowerCase() === a.toLowerCase()));
+
+const mech = recipientsFor_(null, 'Механік');
+const mast = recipientsFor_(null, 'Майстер');
+t('звіт МЕХАНІКА → рівно три адреси', want(mech,
+  ['Buznitskiy7@gmail.com', 'Dyndarnastia@gmail.com', 'evgeniy.galagin@gmail.com']));
+t('звіт МАЙСТРА → рівно чотири адреси', want(mast,
+  ['Buznitskiy7@gmail.com', 'Dyndarnastia@gmail.com', 'olgagoncharukm@gmail.com', 'sashaalieva18@gmail.com']));
+t('майстри не отримують звітів механіка',
+  !mech.some(a => /olgagoncharukm|sashaalieva18/.test(a)));
+t('Галагін не отримує звітів майстра',
+  !mast.some(a => /evgeniy\.galagin/.test(a)));
+
+t('mech.use автора нічого не додає — списки ті самі',
+  want(recipientsFor_(verifySession_(sab.token, 'dev3'), 'Механік'),
+       ['Buznitskiy7@gmail.com', 'Dyndarnastia@gmail.com', 'evgeniy.galagin@gmail.com']));
+t('автор, який уже в списку, не дублюється',
+  recipientsFor_(verifySession_(adm.token, 'dev5'), 'Механік').length === 3);
+
+store.props['MAIL_TO'] = 'Buznitskiy7@gmail.com, DYNDARNASTIA@GMAIL.COM';
+t('різний регістр не подвоює адресу', recipientsFor_(null, 'Майстер').length === 4);
+store.props['MAIL_TO'] = 'Buznitskiy7@gmail.com, Dyndarnastia@gmail.com';
+
+console.log('\n── auditRecipients() ──');
+const ar = auditRecipients();
+console.log(ar.split('\n').map(l => '  ' + l).join('\n'));
+t('auditRecipients показує обидва списки',
+  ar.indexOf('Звіт МЕХАНІКА') > -1 && ar.indexOf('Звіт МАЙСТРА') > -1);
+t('  і не падає на кадровій', ar.indexOf('кадрова недоступна') === -1);
 
 console.log('\n── відповідь клієнтові ──');
 const lr = loginResponse_(loginWithPin_('9988', 'dev5'));
