@@ -143,6 +143,24 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
     own.length === 1 && own[0]._author === 'Гора Андрій Олександрович' && own[0].report_id === foreign);
   t('локальна позначка на сервер не поїхала', own[0]._clientAuthor === null);
 
+  console.log('\n── черга йде сама після входу, без перезавантаження ──');
+  await fetch(BASE + '/reset');
+  await fill();
+  await ctx.setOffline(true);
+  await send(); await closeDlg();
+  t('звіт у черзі', (await queueLen()) === 1);
+  // повертаємо мережу, але НЕ даємо спрацювати події online:
+  // імітуємо реальний випадок — сесія протухла, людина входить заново
+  await page.evaluate(() => { dropSession(); });
+  await ctx.setOffline(false);
+  await page.evaluate(() => { requireLogin(); });   // не повертаємо проміс: він resolve-иться тільки після входу
+  await page.waitForTimeout(300);
+  t('  і досі в черзі, доки не увійшли', (await queueLen()) === 1);
+  await page.fill('#authPin', '2468'); await page.click('#authLoginBtn');
+  await page.waitForTimeout(2500); await closeDlg();
+  t('після входу черга пішла без перезавантаження', (await queueLen()) === 0);
+  t('  і звіт дійшов', (await (await fetch(BASE + '/received')).json()).length === 1);
+
   console.log('\n── доступ до розгортання закрито (не «Усі») ──');
   await fetch(BASE + '/reset');
   await fetch(BASE + '/blockcors');

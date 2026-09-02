@@ -676,7 +676,11 @@
             el.classList.toggle('hidden', !msg);
         };
 
-        let loginResolve = null;
+        /* Чекати на вхід може кілька місць одночасно (черга, відправка звіту,
+           старт застосунку). Тримати ОДИН resolve не можна: наступний виклик
+           затирав попередній, і той, хто чекав першим, зависав назавжди —
+           разом із синхронізацією черги. */
+        let loginWaiters = [];
         const showLoginOverlay = (message) => {
             const o = document.getElementById('authOverlay');
             o.classList.remove('hidden');
@@ -740,12 +744,14 @@
                 customAlert('Зв\'язку немає. Чек-лист можна заповнити — звіт піде, щойно ' +
                             'з\'явиться інтернет і ви увійдете онлайн.');
             }
-            if (loginResolve) { const r = loginResolve; loginResolve = null; r(); }
+            const waiters = loginWaiters;
+            loginWaiters = [];
+            waiters.forEach(function (fn) { try { fn(); } catch (e) {} });
         };
 
         /** Показує екран входу і чекає, доки не увійдуть. */
         const requireLogin = (message) => new Promise((resolve) => {
-            loginResolve = resolve;
+            loginWaiters.push(resolve);
             showLoginOverlay(message);
         });
 
@@ -1501,7 +1507,10 @@
                     customAlert(`На цьому пристрої чекає ${foreign} звіт(ів), складених іншим працівником.\n\n` +
                                 'Вони підуть, коли ця людина увійде за своїм PIN.');
                 } else if (needLogin) {
-                    await handleAuthFailure('Увійдіть за PIN, щоб надіслати збережені звіти — вони на місці.');
+                    // НЕ чекаємо на вхід: інакше синхронізація застрягає до
+                    // перезавантаження сторінки, бо прапорець syncingQueue
+                    // лишається піднятим, поки людина дивиться на екран входу
+                    handleAuthFailure('Увійдіть за PIN, щоб надіслати збережені звіти — вони на місці.');
                 } else if (refused) {
                     customAlert(`Сервер не прийняв ${refused} звіт(ів) із черги: ${lastMsg}\n\nЗвіти залишилися на пристрої.`);
                 } else if (newQueue.length && lastMsg) {
@@ -1752,7 +1761,15 @@
             const contactsBtnHeader = document.getElementById('contactsBtnHeader');
             if(contactsBtnHeader) contactsBtnHeader.addEventListener('click', () => switchView('contacts'));
 
-            onSessionChange = applySession;
+            /* Після вдалого входу черга має піти САМА. Раніше вона чекала
+               перезавантаження сторінки або натискання на індикатор мережі —
+               а це рівно той випадок, коли звіти зависли, людина увійшла
+               і думає, що все надіслалося. Офлайн-сесію не чіпаємо: без
+               справжнього токена сервер однаково відмовить. */
+            onSessionChange = () => {
+                applySession();
+                if (sessionToken()) processOfflineQueue();
+            };
             document.getElementById('authLoginBtn').addEventListener('click', doLogin);
             document.getElementById('authPin').addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') doLogin();
