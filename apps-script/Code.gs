@@ -280,6 +280,7 @@ function sessionUser_(u) {
 
 function loginResponse_(r) {
   if (!r.success) return { ok: false, error: r.code, message: r.error };
+  // (коди: BAD_PIN, PIN_NOT_UNIQUE, THROTTLED, HR_UNAVAILABLE)
   return {
     ok: true, token: r.token, expires_at: r.expiresAt,
     user: sessionUser_({ user_id: r.user_id, name: r.name, shortName: r.shortName,

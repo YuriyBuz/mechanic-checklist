@@ -65,7 +65,18 @@ function loginWithPin_(pin, deviceId) {
   var value = String(pin === null || pin === undefined ? '' : pin).trim();
   if (!value) return fail_('BAD_PIN', 'Введіть PIN');
 
-  var matches = readEmployees_().filter(function (e) {
+  var staff;
+  try {
+    staff = readEmployees_();
+  } catch (err) {
+    // Це не «невірний PIN» і не «немає мережі» — це зламаний доступ до довідника.
+    // Механік має бачити, що робити, а не гадати; технічні подробиці — в журнал.
+    logEvent('Доступ', 'login.hrUnavailable', String(err), {});
+    return fail_('HR_UNAVAILABLE',
+      'Довідник працівників недоступний, тому вхід зараз неможливий. ' +
+      'Це не ваш PIN — зверніться до адміністратора.');
+  }
+  var matches = staff.filter(function (e) {
     return e.eligible && e.pin === value;
   });
 
@@ -153,7 +164,16 @@ function verifySession_(token, deviceId) {
   // можна було б обійти, просто не надіславши параметр
   if (payload.d && payload.d !== deviceId) return null;
 
-  var employee = findEmployee_(payload.id);
+  var employee;
+  try {
+    employee = findEmployee_(payload.id);
+  } catch (err) {
+    // Довідник недоступний. Викидати помилку назовні не можна: вона вилітала
+    // з doPost, Google віддавав HTML замість JSON, і застосунок казав
+    // «немає мережі». Краще чесне «сесії немає» плюс запис у журнал.
+    logEvent('Доступ', 'session.hrUnavailable', String(err), {});
+    return null;
+  }
   if (!employee || !employee.eligible) return null;
   return employee;
 }

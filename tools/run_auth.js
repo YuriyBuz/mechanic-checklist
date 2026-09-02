@@ -238,6 +238,30 @@ t('  і попереджає про застарілі властивості', 
   return a2.indexOf('більше не використовується') > -1;
 })());
 
+console.log('\n── кадрова таблиця недоступна ──');
+// саме те, що сталося насправді: акаунт розгортання втратив доступ до довідника
+const hrBook = store.books['1UhdO9ALcSXk8fgWhUnMiluO4Aao6R4EP6iN4Ie__rY8'];
+delete store.books['1UhdO9ALcSXk8fgWhUnMiluO4Aao6R4EP6iN4Ie__rY8'];
+
+const hrFail = loginWithPin_('3773', 'devHR');
+t('вхід не падає, а повертає зрозумілу відмову', hrFail.success === false);
+t('  код HR_UNAVAILABLE, а не BAD_PIN', hrFail.code === 'HR_UNAVAILABLE');
+t('  і прямо каже, що PIN ні до чого', /не ваш PIN/.test(hrFail.error));
+t('  подробиці — в журналі, не користувачеві',
+  readTable('14_Журнал_подій').rows.some(r => r[2] === 'login.hrUnavailable'));
+console.log('   ' + hrFail.error);
+
+t('whoami не падає, а каже «сесії немає»', verifySession_(sab.token, 'dev3') === null);
+const wr = sessionResponse_(verifySession_(sab.token, 'dev3'));
+t('  клієнт отримує JSON, а не помилку сервера', wr.ok === false && wr.error === 'AUTH');
+
+const dp = JSON.parse(doPost({ postData: { contents: JSON.stringify({
+  action: 'login', pin: '3773', deviceId: 'devHR' }) } }));
+t('doPost віддає JSON, а не сторінку помилки', dp.ok === false && dp.error === 'HR_UNAVAILABLE');
+
+store.books['1UhdO9ALcSXk8fgWhUnMiluO4Aao6R4EP6iN4Ie__rY8'] = hrBook;
+t('коли доступ повернули — вхід працює знову', loginWithPin_('3773', 'devHR2').success === true);
+
 console.log('\n── падіння всередині submitReport_ ──');
 // підміняємо запис у таблицю так, щоб він кинув помилку
 const realAppend = global.appendRows;
