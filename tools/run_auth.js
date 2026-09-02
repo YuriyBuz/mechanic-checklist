@@ -238,6 +238,28 @@ t('  і попереджає про застарілі властивості', 
   return a2.indexOf('більше не використовується') > -1;
 })());
 
+console.log('\n── падіння всередині submitReport_ ──');
+// підміняємо запис у таблицю так, щоб він кинув помилку
+const realAppend = global.appendRows;
+global.appendRows = function (name) {
+  if (name === '12_Відповіді') throw new Error('Exception: Service Spreadsheets timed out');
+  return realAppend.apply(null, arguments);
+};
+const crashed = doPost({ postData: { contents: JSON.stringify({
+  action: 'submit', report_id: 'CRASH-1', business_date: '2026-09-02',
+  stage: 'Початок зміни', role: 'Механік', token: adm.token, deviceId: 'dev5',
+  items: [{ item_id: 'mech.1-1', value: '', values: ['55', '60'], comment: '' }]
+}) } });
+global.appendRows = realAppend;
+const parsed = JSON.parse(crashed);
+t('doPost не падає, а віддає JSON', parsed && parsed.ok === false);
+t('  і називає помилку', parsed.error === 'SERVER' && /timed out/.test(parsed.message));
+const ev = readTable('14_Журнал_подій').rows.filter(r => r[2] === 'submit.crashed');
+t('збій записано в журнал подій', ev.length === 1);
+t('  разом зі звітом, на якому впало', ev[0][3] === 'CRASH-1');
+t('lastCrashes() показує його', lastCrashes().indexOf('CRASH-1') > -1);
+console.log('   ' + parsed.message);
+
 console.log('\n── тема листа ──');
 store.props['PHOTO_FOLDER_ID'] = '';
 store.mail.length = 0;

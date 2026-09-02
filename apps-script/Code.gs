@@ -57,11 +57,56 @@ function doPost(e) {
     return jsonOut({ ok: false, error: 'SERVER', message: String(err) });
   }
 
-  var result = withLock(function () { return submitReport_(payload); });
+  /* Запис звіту теж має бути під try/catch. Без нього будь-яка несподівана
+     помилка вилітала з doPost, Google віддавав HTML-сторінку помилки замість
+     JSON — і застосунок показував «немає мережі», хоча сервер відповів.
+     Саме так звіти тижнями висіли в черзі, а в журналі виконань стояв
+     «Сбій виконання» без жодного сліду в таблиці. */
+  var result;
+  try {
+    result = withLock(function () { return submitReport_(payload); });
+  } catch (err) {
+    logEvent('Техніка', 'submit.crashed',
+             String(err) + (err && err.stack ? ' || ' + err.stack : ''),
+             { report_id: payload && payload.report_id,
+               app_version: payload && payload.app_version });
+    return jsonOut({ ok: false, error: 'SERVER',
+                     message: 'Сервер не зміг зберегти звіт: ' + err });
+  }
+
   if (!result.ok && result.retryable) {
     logEvent('Техніка', 'submit.busy', 'не вдалося взяти блокування', {});
   }
   return jsonOut(result);
+}
+
+/**
+ * Що саме падало. Читає журнал подій і показує останні збої doPost
+ * разом зі стеком — щоб не гадати по «Сбій виконання» в журналі виконань.
+ */
+function lastCrashes(limit) {
+  var t = readTable(SH.EVENTS);
+  var rows = t.rows.filter(function (r) {
+    var ev = String(r[t.col.event] || '');
+    return ev === 'submit.crashed' || ev === 'action.failed' || ev === 'mail.failed' ||
+           ev === 'photo.failed' || ev === 'session.checkFailed';
+  });
+  if (!rows.length) {
+    var msg0 = 'Збоїв у ' + SH.EVENTS + ' не записано.\n' +
+               'Якщо в журналі виконань є «Сбій виконання» — значить, вони сталися ' +
+               'ДО того, як ви оновили Code.gs із перехопленням помилок.';
+    Logger.log(msg0);
+    return msg0;
+  }
+  var out = ['Останні збої (' + rows.length + ' усього):'];
+  rows.slice(-(limit || 15)).forEach(function (r) {
+    out.push('');
+    out.push(r[t.col.ts] + '  ' + r[t.col.event] + '  звіт: ' + (r[t.col.report_id] || '—'));
+    out.push('   ' + String(r[t.col.details]).substring(0, 900));
+  });
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
 }
 
 function submitReport_(p) {
