@@ -143,8 +143,28 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
     own.length === 1 && own[0]._author === 'Гора Андрій Олександрович' && own[0].report_id === foreign);
   t('локальна позначка на сервер не поїхала', own[0]._clientAuthor === null);
 
+  console.log('\n── доступ до розгортання закрито (не «Усі») ──');
+  await fetch(BASE + '/reset');
+  await fetch(BASE + '/blockcors');
+  // прибираємо локальний перевірник, інакше застосунок просто впустить офлайн
+  await page.evaluate(() => {
+    localStorage.removeItem('checklistOfflineUnlockV1');
+    dropSession(); requireLogin();
+  });
+  await page.waitForTimeout(300);
+  await page.fill('#authPin', '2468'); await page.click('#authLoginBtn');
+  await page.waitForTimeout(2500);
+  const msg = await page.locator('#authError').textContent();
+  console.log('   ' + msg.trim());
+  t('не каже «немає мережі», коли мережа є', msg.indexOf('Немає інтернету') === -1);
+  t('називає справжню причину', /Хто має доступ|не «Усі»|сторінку/.test(msg));
+  await fetch(BASE + '/blockcors?off');
+
   console.log('\n── сервер відмовив: сесія протухла ──');
   await fetch(BASE + '/reset');
+  // попередній сценарій лишив нас без сесії — входимо заново
+  await page.fill('#authPin', '2468'); await page.click('#authLoginBtn');
+  await page.waitForTimeout(1200); await closeDlg();
   await fill();
   await page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem('checklistSessionV1'));

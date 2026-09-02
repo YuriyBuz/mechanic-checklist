@@ -26,6 +26,7 @@ const PEOPLE = [
     roles: ['shift.master'], can: CAN.master }
 ];
 const received = [];
+let blockCors = false;
 let fired = {};                     // emp_id → звільнений посеред сесії
 
 const tokenFor = (p, dev) => 'T.' + p.id + '.' + (dev || '');
@@ -50,6 +51,18 @@ const srv = http.createServer((req, res) => {
         ? fs.readFileSync(process.env.TW_CSS, 'utf8') : '.hidden{display:none}.flex{display:flex}'));
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     return res.end(html);
+  }
+  // Імітація розгортання з доступом НЕ «Усі»: браузер не отримує
+  // Access-Control-Allow-Origin і fetch падає ще до відповіді
+  if (req.method === 'GET' && req.url.startsWith('/blockcors')) {
+    blockCors = req.url.indexOf('off') === -1;
+    res.writeHead(200, cors); return res.end(blockCors ? 'cors blocked' : 'cors ok');
+  }
+  // без Access-Control-Allow-Origin — рівно те, що бачить браузер,
+  // коли Google веде запит на сторінку входу замість даних
+  if (blockCors && req.method === 'POST') {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    return res.end('<html>Sign in with Google</html>');
   }
   if (req.method === 'GET' && req.url.startsWith('/reset')) {
     received.length = 0; fired = {};

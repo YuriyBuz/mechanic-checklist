@@ -536,14 +536,45 @@
         /* Свій Content-Type НЕ ставимо: тоді браузер шле text/plain, preflight
            не виникає — і відповідь можна прочитати. Саме через це старий
            клієнт із mode:'no-cors' ніколи не знав, чи звіт узагалі дійшов. */
+        /* Помилки розрізняються навмисно. Раніше будь-який збій показувався як
+           «немає мережі», і через це причину шукали тиждень: інтернет був,
+           а браузер просто не міг прочитати відповідь. Тепер застосунок каже,
+           що саме сталося. */
+        const apiError = (kind, message) => {
+            const e = new Error(message);
+            e.kind = kind;
+            return e;
+        };
+
         const api = async (payload) => {
-            const res = await fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                redirect: 'follow',
-                body: JSON.stringify(Object.assign({ deviceId: getDeviceId() }, payload))
-            });
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            return res.json();
+            if (!navigator.onLine) throw apiError('offline', 'Немає інтернету на пристрої.');
+            let res;
+            try {
+                res = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    body: JSON.stringify(Object.assign({ deviceId: getDeviceId() }, payload))
+                });
+            } catch (e) {
+                /* fetch падає і коли мережі немає, і коли Google не дав браузеру
+                   прочитати відповідь. Друге буває, коли в розгортанні «Хто має
+                   доступ» не «Усі»: замість даних приходить сторінка входу,
+                   а її читати з чужого домену не можна. */
+                throw apiError('blocked', navigator.onLine
+                    ? 'Сервер не відповідає. Найчастіша причина — у розгортанні скрипта ' +
+                      '«Хто має доступ» стоїть не «Усі».'
+                    : 'Зв\'язок обірвався.');
+            }
+            if (!res.ok) {
+                throw apiError('http', 'Сервер відповів помилкою HTTP ' + res.status +
+                                       ' — скрипт розгорнуто, але він не спрацював.');
+            }
+            try {
+                return await res.json();
+            } catch (e) {
+                throw apiError('badjson', 'Сервер повернув не дані, а сторінку. ' +
+                                          'Схоже, розгортання вимагає входу в Google.');
+            }
         };
 
         const loadSession = () => {
@@ -670,9 +701,11 @@
             setAuthError('');
             btn.disabled = true; btn.textContent = 'Перевірка…';
             let data = null, offline = false;
+            let lastApiError = null;
             try {
                 data = await api({ action: 'login', pin: pin });
             } catch (e) {
+                lastApiError = e;
                 // сервера немає — пробуємо локальне розблокування
                 const record = await tryOfflineUnlock(pin);
                 if (record) { data = { ok: true, user: record.user }; offline = true; }
@@ -681,7 +714,8 @@
             input.value = '';
 
             if (!data) {
-                setAuthError('Немає зв\'язку. Локальний вхід недоступний — спершу увійдіть один раз онлайн.');
+                setAuthError((lastApiError ? lastApiError.message : 'Сервер не відповідає.') +
+                             ' Локальний вхід теж недоступний — спершу увійдіть один раз онлайн.');
                 return;
             }
             if (!data.ok) { setAuthError(data.message || 'Невірний PIN'); return; }
@@ -1447,6 +1481,7 @@
                         res = await api(body);
                     } catch (e) {
                         res = null;
+                        lastMsg = e.message || '';
                     }
                     if (res && (res.ok || res.duplicate)) { sent++; continue; }
                     if (res && !res.ok) {
@@ -1469,6 +1504,9 @@
                     await handleAuthFailure('Увійдіть за PIN, щоб надіслати збережені звіти — вони на місці.');
                 } else if (refused) {
                     customAlert(`Сервер не прийняв ${refused} звіт(ів) із черги: ${lastMsg}\n\nЗвіти залишилися на пристрої.`);
+                } else if (newQueue.length && lastMsg) {
+                    customAlert(`Звіти не пішли: ${lastMsg}\n\nВони залишилися на пристрої — ` +
+                                'нічого не втрачено, надішлються, щойно все запрацює.');
                 }
                 } finally {
                     syncingQueue = false;
@@ -1640,7 +1678,8 @@
                     res = await api(body);
                 } catch (e) {
                     console.error(e);
-                    queueIt('Не вдалося достукатися до сервера.');
+                    // причину показуємо як є: «немає мережі» на все підряд збиває з пантелику
+                    queueIt(e.message || 'Не вдалося достукатися до сервера.');
                     return;
                 }
 
