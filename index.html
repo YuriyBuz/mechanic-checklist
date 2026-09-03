@@ -1469,6 +1469,7 @@
 
                 const newQueue = [];
                 let sent = 0, refused = 0, lastMsg = '', needLogin = false, foreign = 0;
+                const sentList = [];
                 try {
                 const me = (session && session.user) ? session.user.user_id : '';
                 for (const report of queue) {
@@ -1489,7 +1490,11 @@
                         res = null;
                         lastMsg = e.message || '';
                     }
-                    if (res && (res.ok || res.duplicate)) { sent++; continue; }
+                    if (res && (res.ok || res.duplicate)) {
+                        sent++;
+                        sentList.push((report.business_date || '') + ' · ' + (report.stage || ''));
+                        continue;
+                    }
                     if (res && !res.ok) {
                         refused++;
                         lastMsg = res.message || res.error || '';
@@ -1502,7 +1507,12 @@
                 updateNetworkStatus();
 
                 if (sent && !newQueue.length) {
-                    customAlert(`Збережені звіти відправлено: ${sent}`);
+                    // Просто «відправлено: 3» вводило в оману: 03.09 механік побачив цей
+                    // напис, а пішли звіти за 01.09 і 02.09 — і сьогоднішній
+                    // чек-лист так ніхто й не заповнив. Тепер видно, ЩО саме пішло.
+                    const stale = sentList.some(t => t.slice(0, 10) < kyivDate());
+                    customAlert(`Збережені звіти відправлено: ${sent}` + '\n\n' + sentList.join('\n') +
+                                (stale ? '\n\nЦе звіти за минулі дні. Сьогоднішній чек-лист треба заповнити окремо.' : ''));
                 } else if (foreign && !refused) {
                     customAlert(`На цьому пристрої чекає ${foreign} звіт(ів), складених іншим працівником.\n\n` +
                                 'Вони підуть, коли ця людина увійде за своїм PIN.');

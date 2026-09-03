@@ -307,6 +307,26 @@ t('  і різні теми — різні ланцюжки',
   okMail.subject !== badMail.subject && okMail.subject !== mastMail.subject);
 t('заголовок УСЕРЕДИНІ листа без піктограм',
   okMail.htmlBody.indexOf('<h2 style="color: #047857; margin-bottom: 5px;">Звіт (Механік): Початок зміни') > -1);
+
+// 03.09 три звіти з черги приїхали з датою 01–02.09, але з СЬОГОДНІШНІМ часом —
+// час, якого не існувало. Дата зміни й момент надходження мають бути розділені.
+const sendOn = (day) => {
+  store.mail.length = 0;
+  submitReport_({
+    report_id: 'D' + Math.random(), business_date: day,
+    stage: 'Початок зміни', role: 'Механік', token: adm.token, deviceId: 'dev5',
+    items: [{ item_id: 'mech.1-1', value: '', values: ['55', '60'], comment: '' }]
+  });
+  return store.mail[0];
+};
+const today = businessDate();
+const lateMail = sendOn('2026-08-25');
+const todayMail = sendOn(today);
+t('запізнілий звіт каже, що чекав у черзі', /чекав у черзі пристрою/.test(lateMail.htmlBody));
+t('  і показує обидві дати: зміни й надходження',
+  lateMail.htmlBody.indexOf('2026-08-25') > -1 && lateMail.htmlBody.indexOf(today) > -1);
+t('сьогоднішній звіт виглядає як раніше', !/чекав у черзі/.test(todayMail.htmlBody) &&
+  /<strong>Дата:<\/strong> [0-9-]{10} \d\d:\d\d:\d\d<\/p>/.test(todayMail.htmlBody));
 console.log('   ' + okMail.subject);
 console.log('   ' + badMail.subject);
 console.log('   ' + mastMail.subject);

@@ -69,6 +69,25 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   t('сервер отримав рівно один звіт', got1.length === 1);
   t('фото доїхали', got1[0].items.filter(i => i.photoData).length === 3);
 
+  console.log('\n── черга за минулі дні називає себе ──');
+  // 03.09 механік побачив «Збережені звіти відправлено: 3», а пішли звіти за
+  // 01.09 і 02.09 — і сьогоднішній чек-лист так ніхто й не заповнив.
+  await page.evaluate(() => {
+    const me = JSON.parse(localStorage.getItem('checklistSession') || '{}');
+    localStorage.setItem('offlineReportsQueue', JSON.stringify([{
+      action: 'submit', report_id: '2026-09-01_mech_end_test',
+      business_date: '2026-09-01', stage: 'Кінець зміни', role: 'Механік',
+      items: [], _author: (me.user && me.user.user_id) || ''
+    }]));
+  });
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await page.waitForTimeout(1800);
+  const staleMsg = await dlgText();
+  t('черга спорожніла', (await queueLen()) === 0);
+  t('видно, за який день пішов звіт', staleMsg.includes('2026-09-01') && staleMsg.includes('Кінець зміни'));
+  t('і що сьогоднішній ще треба заповнити', staleMsg.includes('Сьогоднішній чек-лист'));
+  await closeDlg();
+
   console.log('\n── вхід без мережі (локальний перевірник) ──');
   await fetch(BASE + '/reset');
   // сторінка без service worker, тому перезавантажитися офлайн вона не може:

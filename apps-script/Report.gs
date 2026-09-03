@@ -154,9 +154,22 @@ function sendReportEmail_(p, user, bizDate, cnt, alerts, photos, items) {
     attachments.push(photos.blobs[itemId]);
   });
 
+  /* Дата в шапці. Час брався з моменту складання листа — і для звіту, що
+     пролежав у черзі пристрою, виходила неправда: дата зміни вчорашня, а час
+     сьогоднішній (03.09 приїхали три звіти з часом, якого не існувало).
+     За поточний день лист виглядає точно як раніше; запізнілий чесно каже,
+     коли він насправді надійшов. */
+  var todayDate = businessDate();
+  var dateLine = esc_(bizDate) + ' ' + esc_(localTime());
+  if (bizDate !== todayDate) {
+    dateLine = esc_(bizDate) +
+      ' <span style="color:#b45309;">(звіт чекав у черзі пристрою, надійшов ' +
+      esc_(todayDate) + ' о ' + esc_(localTime()) + ')</span>';
+  }
+
   var html = '' +
     '<h2 style="color: #047857; margin-bottom: 5px;">' + esc_(titleText) + '</h2>' +
-    '<p style="margin-top: 0;"><strong>Дата:</strong> ' + esc_(bizDate) + ' ' + esc_(localTime()) + '</p>' +
+    '<p style="margin-top: 0;"><strong>Дата:</strong> ' + dateLine + '</p>' +
     '<hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 20px;">';
 
   order.forEach(function (g) {

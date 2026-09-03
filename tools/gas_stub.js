@@ -62,7 +62,14 @@ global.Utilities = {
   newBlob: b => ({ getDataAsString: () => Buffer.from(b.map(x => x < 0 ? x + 256 : x)).toString('utf8') }),
   getUuid: () => crypto.randomUUID(),
   sleep: () => {},                                  // у тестах не гальмуємо
-  formatDate: (d, tz, f) => new Date(d).toISOString().replace(/\.\d+Z$/, 'Z')
+  // Формат раніше ігнорувався, і businessDate() з localTime() віддавали
+  // однаковий ISO-рядок — перевірити дату в листі було неможливо.
+  formatDate: (d, tz, f) => {
+    const iso = new Date(d).toISOString().replace(/\.\d+Z$/, 'Z');
+    if (f === 'yyyy-MM-dd') return iso.slice(0, 10);
+    if (f === 'HH:mm:ss') return iso.slice(11, 19);
+    return iso;
+  }
 };
 global.PropertiesService = { getScriptProperties: () => ({
   getProperty: k => (k in store.props ? store.props[k] : null),
