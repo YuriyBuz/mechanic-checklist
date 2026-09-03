@@ -340,5 +340,40 @@ const lr2 = loginResponse_(loginWithPin_('1111', 'dev9'));
 t('дубль → зрозуміла відмова', !lr2.ok && lr2.error === 'PIN_NOT_UNIQUE' && !!lr2.message);
 t('whoami без сесії → AUTH', sessionResponse_(null).error === 'AUTH');
 
+console.log('\n── щоденна перевірка: чи все здано ──');
+// 02.09 у майстра не було «Початку зміни» взагалі, і ніхто не помітив:
+// checkSchedule() дивилася лише на механіка.
+const yday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return businessDate(d); })();
+const repRow = (id, stage, role, user) => {
+  const r = Array(18).fill(''); r[0] = id; r[1] = nowIsoUtc(); r[2] = yday;
+  r[3] = stage; r[4] = role; r[5] = user; return r;
+};
+// у попередніх перевірках уже лягали звіти за вчора — прибираємо, щоб день був чистий
+const repSheet = book.getSheetByName(SH.REPORTS);
+repSheet.g = repSheet.g.filter((r, i) => i === 0 || String(r[2]) !== yday);
+appendRows(SH.REPORTS, [
+  repRow('Y1', 'Початок зміни', 'Механік', 'U-003'),
+  repRow('Y2', 'Кінець зміни',  'Механік', 'U-003'),
+  repRow('Y3', 'Початок зміни', 'Майстер', 'U-006')
+]);
+store.mail.length = 0;
+const schMsg = checkSchedule();
+t('пропуск майстра нарешті видно', /Майстер · Кінець зміни/.test(schMsg));
+t('  і механіка даремно не чіпає', !/Механік/.test(schMsg.split(';')[0]));
+const schRows = readTable(SH.SCHEDULE).rows.filter(r => String(r[0]) === yday);
+t('у 21_Розклад чотири рядки: обидві ролі × обидві зміни', schRows.length === 4);
+const alert = store.mail[0];
+t('сигнал пішов', !!alert && /Чек-лист за/.test(alert.subject));
+t('  адресати — з кадрової за роллю майстра',
+  alert.to.indexOf('olgagoncharukm@gmail.com') > -1 &&
+  alert.to.indexOf('sashaalieva18@gmail.com') > -1 &&
+  alert.to.indexOf('Buznitskiy7@gmail.com') > -1);
+t('  механічної розсилки не зачепило', alert.to.indexOf('evgeniy.galagin@gmail.com') === -1);
+t('повторний запуск не дублює рядків',
+  /вже виконано/.test(checkSchedule()) &&
+  readTable(SH.SCHEDULE).rows.filter(r => String(r[0]) === yday).length === 4);
+console.log('   ' + schMsg);
+console.log('   → ' + alert.to);
+
 console.log('\n' + (fails ? '❌ ПОМИЛОК: ' + fails : '✅ Усі перевірки пройдено'));
 process.exit(fails ? 1 : 0);

@@ -97,8 +97,11 @@ function auditRecipients() {
   out.push('');
   out.push('MAIL_TO (' + (recipients_('MAIL_TO').join(', ') || 'не задано') +
            ') — запасний варіант: спрацьовує, тільки якщо в кадровій нікого з поштою.');
-  out.push('Щоденний контроль і тижневий дайджест ідуть на MAIL_ALERT_TO, ' +
-           'а якщо він порожній — на MAIL_TO.');
+  out.push('Щоденний контроль (checkSchedule) іде тим самим адресатам за роллю, ' +
+           'у якої дірка: пропуск механіка — списком механіка, пропуск майстра — ' +
+           'списком майстра. MAIL_ALERT_TO переважає, якщо його заповнити.');
+  out.push('Тижневий дайджест іде на MAIL_ALERT_TO, а якщо він порожній — на MAIL_TO (' +
+           (recipients_('MAIL_ALERT_TO').length ? 'задано' : 'не задано') + ').');
 
   var msg = out.join('\n');
   Logger.log(msg);
@@ -236,10 +239,11 @@ function esc_(s) {
 }
 
 /**
- * Щоденна перевірка: чи здано обидві зміни за вчора.
+ * Щоденна перевірка: чи здано обидві зміни за вчора — і механіком, і майстром.
  * Саме цього бракувало — 13 днів без жодного звіту і 18 днів з однією зміною
  * з двох пройшли непоміченими за пів року.
  *
+ * Сигнал іде тим, хто за кадровою отримує звіти тієї ролі, у якої дірка.
  * Повісити тригер: щодня ~09:00.
  */
 function checkSchedule() {
@@ -260,21 +264,36 @@ function checkSchedule() {
   var already = {};
   sch.rows.forEach(function (r) { already[r[0] + '|' + r[1] + '|' + r[2]] = true; });
 
-  var expect = [['Механік', 'Початок зміни'], ['Механік', 'Кінець зміни']];
-  var rows = [], missing = [], dupes = [];
+  /* Майстер тут з'явився після 03.09: за 02.09 у нього не було «Початку
+     зміни» взагалі — ні на сервері, ні в черзі пристрою, і ніхто цього не
+     помітив, бо перевірка дивилася лише на механіка. */
+  var expect = [['Механік', 'Початок зміни'], ['Механік', 'Кінець зміни'],
+                ['Майстер', 'Початок зміни'], ['Майстер', 'Кінець зміни']];
+  var rows = [], missing = [], dupes = [], affected = {};
   expect.forEach(function (e) {
     var n = got[e[0] + '|' + e[1]] || 0;
     var st = n === 0 ? 'пропущено' : (n > 1 ? 'дубль' : 'ok');
     if (!already[day + '|' + e[1] + '|' + e[0]]) rows.push([day, e[1], e[0], 1, n, st]);
     if (st === 'пропущено') missing.push(e[0] + ' · ' + e[1]);
     if (st === 'дубль') dupes.push(e[0] + ' · ' + e[1] + ' (' + n + ')');
+    if (st !== 'ok') affected[e[0]] = true;
   });
   appendRows(SH.SCHEDULE, rows);
   if (!rows.length) return 'за ' + day + ' перевірку вже виконано';
 
   if (!missing.length && !dupes.length) return 'за ' + day + ' усе на місці';
 
-  var to = recipients_('MAIL_ALERT_TO').length ? recipients_('MAIL_ALERT_TO') : recipients_('MAIL_TO');
+  /* Кому йде сигнал. Раніше — список руками у MAIL_ALERT_TO або MAIL_TO, і якщо
+     жодна властивість не заповнена, сигнал не йшов нікуди. Тепер адреси, як і
+     для самих звітів, випливають із ролей у кадровій — і лише тих ролей, у яких
+     справді дірка: майстру ні до чого пропуски механіка, і навпаки.
+     MAIL_ALERT_TO лишається ручним переважанням, якщо його колись заповнять. */
+  var to = recipients_('MAIL_ALERT_TO');
+  if (!to.length) {
+    Object.keys(affected).forEach(function (role) {
+      recipientsFor_(role).forEach(function (a) { addRecipient_(to, a); });
+    });
+  }
   if (to.length) {
     var body = '<div style="font-family:sans-serif">' +
       (missing.length ? '<p><b>Не здано чек-лист за ' + esc_(day) + ':</b><br>' +
