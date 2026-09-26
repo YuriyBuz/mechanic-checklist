@@ -237,6 +237,16 @@ t('  і попереджає про застарілі властивості', 
   delete store.props['MAIL_TO_MASTER'];
   return a2.indexOf('більше не використовується') > -1;
 })());
+t('  і каже, коли дайджестові нікуди йти', (() => {
+  // якщо очистити MAIL_ALERT_TO і MAIL_TO, тижневий дайджест мовчки зникає:
+  // за ролями він, на відміну від щоденного контролю, не розсилається
+  const keep = store.props['MAIL_TO'];
+  store.props['MAIL_TO'] = '';
+  const a3 = auditRecipients();
+  const digest = weeklyDigest();
+  store.props['MAIL_TO'] = keep;
+  return a3.indexOf('не йде нікому') > -1 && digest.indexOf('не заданий') > -1;
+})());
 
 console.log('\n── кадрова таблиця недоступна ──');
 // саме те, що сталося насправді: акаунт розгортання втратив доступ до довідника

@@ -97,11 +97,19 @@ function auditRecipients() {
   out.push('');
   out.push('MAIL_TO (' + (recipients_('MAIL_TO').join(', ') || 'не задано') +
            ') — запасний варіант: спрацьовує, тільки якщо в кадровій нікого з поштою.');
-  out.push('Щоденний контроль (checkSchedule) іде тим самим адресатам за роллю, ' +
-           'у якої дірка: пропуск механіка — списком механіка, пропуск майстра — ' +
-           'списком майстра. MAIL_ALERT_TO переважає, якщо його заповнити.');
-  out.push('Тижневий дайджест іде на MAIL_ALERT_TO, а якщо він порожній — на MAIL_TO (' +
-           (recipients_('MAIL_ALERT_TO').length ? 'задано' : 'не задано') + ').');
+  out.push('MAIL_ALERT_TO (' + (recipients_('MAIL_ALERT_TO').join(', ') || 'не задано') +
+           ') — ручне переважання для листів контролю.');
+  out.push('');
+  out.push('Щоденний контроль (checkSchedule): якщо MAIL_ALERT_TO порожній — іде тим, хто ' +
+           'отримує звіти ролі, у якої дірка (пропуск механіка — списком механіка, ' +
+           'пропуск майстра — списком майстра).');
+  out.push('Тижневий дайджест (weeklyDigest): MAIL_ALERT_TO, а якщо порожній — MAIL_TO. ' +
+           'За ролями він НЕ розсилається.');
+  if (!recipients_('MAIL_ALERT_TO').length && !recipients_('MAIL_TO').length) {
+    out.push('');
+    out.push('⚠️ MAIL_ALERT_TO і MAIL_TO обидва порожні — тижневий дайджест зараз ' +
+             'не йде нікому і мовчить про це.');
+  }
 
   var msg = out.join('\n');
   Logger.log(msg);
