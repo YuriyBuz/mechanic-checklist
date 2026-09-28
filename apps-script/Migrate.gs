@@ -433,3 +433,81 @@ function renameMasterItems() {
     return msg;
   }, 60000);
 }
+
+/**
+ * Перехід чек-листа механіка на версію 4.1 (SeedV4.gs).
+ *
+ * Що робить:
+ *   · додає в 01_Пункти колонки group_seq і hint, у 02_Варіанти — requires;
+ *   · оновлює/додає 66 пунктів і їхні варіанти за item_id (група, порядок,
+ *     частота, норми, підказки);
+ *   · 12 старим пунктам ставить active_to = день перед запуском — у застосунку
+ *     вони зникають, у 12_Відповіді та аналітиці лишаються.
+ *
+ * Нічого не видаляє, 12_Відповіді не чіпає. Повторний запуск нічого не змінює.
+ *
+ * launchDate — з якого дня показувати v4 (типово V4_LAUNCH). Для перевірки на
+ * одному телефоні до старту: seedV4(businessDate()) — увімкне сьогодні.
+ */
+function seedV4(launchDate) {
+  return withLock(function () {
+    var launch = String(launchDate || V4_LAUNCH);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(launch)) throw new Error('launchDate має бути yyyy-mm-dd, а не ' + launch);
+    var d = new Date(launch + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() - 1);
+    var dayBefore = d.toISOString().slice(0, 10);
+
+    // 1. заголовки: нові колонки дописуються праворуч, наявні дані не рухаються
+    schemaDefs_().forEach(function (def) {
+      if (def.name === SH.ITEMS || def.name === SH.OPTIONS) applySheetDef_(sheetByName(def.name), def);
+    });
+
+    // 2. пункти: рядки SeedV4 вирівнюються під заголовок аркуша за назвами колонок,
+    //    щоб порядок колонок у таблиці ніколи не мав значення
+    var it = readTable(SH.ITEMS);
+    var rows = V4_ITEMS.map(function (src) {
+      var o = {};
+      V4_ITEM_COLS.forEach(function (c, i) { o[c] = src[i]; });
+      if (o.active_from === V4_LAUNCH) o.active_from = launch;   // нові пункти — з дня запуску
+      return it.header.map(function (h) { return o[h] === undefined ? '' : o[h]; });
+    });
+    var resItems = upsert_(SH.ITEMS, rows, function (r) { return r[0]; });
+
+    // 3. пенсія для старих
+    it = readTable(SH.ITEMS);
+    var cTo = it.col.active_to, retired = 0;
+    V4_RETIRE.forEach(function (id) {
+      it.rows.forEach(function (r, i) {
+        if (String(r[0]) !== id) return;
+        if (String(r[cTo]) === dayBefore) return;
+        it.sheet.getRange(i + 2, cTo + 1).setValue(dayBefore);
+        retired++;
+      });
+    });
+
+    // 4. варіанти
+    var op = readTable(SH.OPTIONS);
+    var optRows = V4_OPTIONS.map(function (src) {
+      var o = { item_id: src[0], seq: src[1], value: src[2], status: src[3], active: src[4], requires: src[5] };
+      return op.header.map(function (h) { return o[h] === undefined ? '' : o[h]; });
+    });
+    var resOpts = upsert_(SH.OPTIONS, optRows, function (r) { return r[0] + '\u0000' + r[2]; });
+
+    // 5. підсумок — те, що має зійтися з документом
+    var cfg = buildClientConfig_('Механік', null);
+    var day = launch;
+    var check = readTable(SH.ITEMS).rows.map(function (r) {
+      var o = {}; readTable(SH.ITEMS).header.forEach(function (h, i) { o[h] = r[i]; }); return o;
+    }).filter(function (o) { return o.role === 'Механік' && itemActiveOn_(o, day); });
+    var st = check.filter(function (o) { return o.visible_on === 'all' || o.visible_on === 'start'; }).length;
+    var en = check.filter(function (o) { return o.visible_on === 'all' || o.visible_on === 'end'; }).length;
+    var msg = 'v4 із ' + launch + ': пунктів ' + resItems + '; варіантів ' + resOpts +
+              '; на пенсію з ' + dayBefore + ' — ' + retired + ' (усього в списку ' + V4_RETIRE.length + ')' +
+              '\nЧинних пунктів механіка на ' + day + ': ' + check.length +
+              ' · початок зміни ' + st + ' · кінець ' + en +
+              '\nСьогодні клієнт отримує версію ' + cfg.config_version + ' (' + cfg.items.length + ' пунктів)';
+    logEvent('Схема', 'seedV4', msg);
+    Logger.log(msg);
+    return msg;
+  }, 60000);
+}

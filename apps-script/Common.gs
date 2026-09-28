@@ -91,6 +91,21 @@ function readTable(name) {
   return { sheet: s, header: header, rows: values.slice(1), col: col };
 }
 
+/**
+ * Останні n рядків аркуша з тим самим {header, rows, col}, що й readTable.
+ * Для 12_Відповіді (тисячі рядків) читати все заради одного останнього запису — марно.
+ */
+function tailRows_(name, n) {
+  var s = sheetByName(name);
+  var last = s.getLastRow(), width = s.getLastColumn();
+  var header = last >= 1 && width ? s.getRange(1, 1, 1, width).getValues()[0] : [];
+  var col = {};
+  for (var i = 0; i < header.length; i++) col[String(header[i]).trim()] = i;
+  var from = Math.max(2, last - n + 1);
+  var rows = last >= 2 ? s.getRange(from, 1, last - from + 1, width).getValues() : [];
+  return { sheet: s, header: header, rows: rows, col: col };
+}
+
 /** Дописує рядки пачкою. Порожній масив — no-op. */
 function appendRows(name, rows) {
   if (!rows || !rows.length) return 0;

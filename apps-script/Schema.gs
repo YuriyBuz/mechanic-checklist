@@ -26,12 +26,15 @@ function schemaDefs_() {
     },
     {
       name: SH.OPTIONS,
-      header: ['item_id', 'seq', 'value', 'status', 'active'],
+      header: ['item_id', 'seq', 'value', 'status', 'active', 'requires'],
       widths: { value: 260 },
       text: ['item_id', 'value'],
-      validation: { status: ['ok', 'warn', 'alert'], active: ['так', 'ні'] },
+      validation: { status: ['ok', 'warn', 'alert'], active: ['так', 'ні'],
+                    requires: ['', 'фото', 'коментар', 'фото+коментар'] },
       note: 'Норма для кнопкових пунктів. Саме тут «Не потр.» перестає бути аварією.\n' +
-            'active=ні — історичне написання: у застосунку не показується, але міграція його впізнає.'
+            'active=ні — історичне написання: у застосунку не показується, але міграція його впізнає.\n' +
+            'requires — що вимагає ця відповідь: фото, коментар або обидва. Відповідь зі статусом alert ' +
+            'вимагає коментар завжди, без окремої позначки.'
     },
     {
       name: SH.EMPLOYEES,
@@ -163,13 +166,22 @@ function applySheetDef_(s, def) {
  */
 function seedDictionaries() {
   var res = [];
-  res.push(upsert_(SH.ITEMS, SEED_ITEMS, function (r) { return r[0]; }));
+  /* Seed.gs — це v3. Після seedV4() пункти механіка живуть у SeedV4.gs, і повторний
+     seedDictionaries() затер би їхні групи, частоту й підказки версією v3. Тому
+     коли v4 уже в таблиці, рядки механіка з v3 пропускаються — засіваються лише
+     майстер і працівники. */
+  var v4 = readTable(SH.ITEMS).rows.some(function (r) { return r[0] === 'mech.0-1'; });
+  var notMech = function (r) { return !/^mech\./.test(String(r[0])); };
+  var seedItems = v4 ? SEED_ITEMS.filter(notMech) : SEED_ITEMS;
+  var seedOptions = v4 ? SEED_OPTIONS.filter(notMech) : SEED_OPTIONS;
+  res.push(upsert_(SH.ITEMS, seedItems, function (r) { return r[0]; }));
   // Ключ варіанта — item_id + value. Роздільник записаний escape-послідовністю,
   // а не самим символом: сирий нульовий байт у файлі редактор Apps Script
   // відхиляє як «Invalid or unexpected token». Значення ключа те саме.
-  res.push(upsert_(SH.OPTIONS, SEED_OPTIONS, function (r) { return r[0] + '\u0000' + r[2]; }));
+  res.push(upsert_(SH.OPTIONS, seedOptions, function (r) { return r[0] + '\u0000' + r[2]; }));
   res.push(upsert_(SH.EMPLOYEES, SEED_EMPLOYEES, function (r) { return r[0]; }));
-  var msg = 'Пункти: ' + res[0] + ' · Варіанти: ' + res[1] + ' · Працівники: ' + res[2];
+  var msg = 'Пункти: ' + res[0] + ' · Варіанти: ' + res[1] + ' · Працівники: ' + res[2] +
+            (v4 ? ' · пункти механіка пропущено: у таблиці вже v4, їх веде seedV4()' : '');
   logEvent('Схема', 'seedDictionaries', msg);
   return msg;
 }

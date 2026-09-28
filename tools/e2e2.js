@@ -34,7 +34,10 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
         });
       });
     });
-    for (const id of ['3-4', '5-2', '7-2']) {
+    const needPhoto = await page.evaluate(() =>
+      checklistConfig.flatMap(g => g.items).filter(i => (i.visibleOn === 'all' || i.visibleOn === 'start') &&
+        (i.photoRequired || String((i.meta[i.options[0]] || {}).requires || '').includes('фото'))).map(i => i.id));
+    for (const id of needPhoto) {
       await page.setInputFiles(`#start-${id} .photo-input`, { name: 'p.jpg', mimeType: 'image/jpeg', buffer: JPEG });
       await page.waitForTimeout(250);
     }
@@ -67,7 +70,7 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   t('черга спорожніла', (await queueLen()) === 0);
   const got1 = await (await fetch(BASE + '/received')).json();
   t('сервер отримав рівно один звіт', got1.length === 1);
-  t('фото доїхали', got1[0].items.filter(i => i.photoData).length === 3);
+  t('фото доїхали', got1[0].items.filter(i => i.photoData).length === 6);
 
   console.log('\n── черга за минулі дні називає себе ──');
   // 03.09 механік побачив «Збережені звіти відправлено: 3», а пішли звіти за

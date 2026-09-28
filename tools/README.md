@@ -28,6 +28,18 @@ python3 tools/gen_seed.py     # answers.json + index.html клієнта → See
 `NORMS` (чернетка норм), `STATUS_FIX` (виправлені статуси варіантів),
 `LEGACY_STATUS`, `MASTER` (відновлений чек-лист майстра). Їх правити тут.
 
+## Чек-лист v4 — gen_seed_v4.py і gen_config_fixture.js
+
+    python3 tools/gen_seed_v4.py        # → apps-script/SeedV4.gs (66 пунктів, статуси з PDF)
+    node tools/gen_config_fixture.js    # → tools/config_fixture.json — те, що getConfig віддає клієнту
+
+`gen_seed_v4.py` — єдине місце, де живе склад v4: пункти, варіанти зі статусами,
+`requires`, норми з рішень 28.09, підказки, список пунктів на пенсію. Змінили щось —
+перегенеруйте `SeedV4.gs` і фікстуру; `seedV4()` у таблиці підхопить різницю.
+
+`config_fixture.json` збирається справжнім `buildClientConfig_` через стаб, тому
+браузерні тести бачать рівно той конфіг, що й застосунок у виробництві.
+
 ## run_auth.js — прогін автентифікації без Google
 
     node tools/run_auth.js

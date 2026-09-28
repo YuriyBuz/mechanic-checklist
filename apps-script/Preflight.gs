@@ -57,6 +57,9 @@ function preflight() {
   say(typeof migrateLegacy === 'function', 'Migrate.gs ' + (typeof migrateLegacy === 'function' ? 'на місці' : 'ВІДСУТНІЙ'));
   say(typeof sendReportEmail_ === 'function', 'Report.gs ' + (typeof sendReportEmail_ === 'function' ? 'на місці' : 'ВІДСУТНІЙ'));
   say(typeof loginWithPin_ === 'function', 'Auth.gs ' + (typeof loginWithPin_ === 'function' ? 'на місці' : 'ВІДСУТНІЙ'));
+  say(typeof V4_ITEMS !== 'undefined',
+      'SeedV4.gs: ' + (typeof V4_ITEMS === 'undefined' ? 'ВІДСУТНІЙ — чек-лист v4 не засіяти' :
+        V4_ITEMS.length + ' пунктів, запуск ' + V4_LAUNCH));
 
   // --- 3. КОНФЛІКТ ІМЕН: чий doPost переміг ---
   if (typeof doPost !== 'function') {

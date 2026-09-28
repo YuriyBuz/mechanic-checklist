@@ -9,7 +9,7 @@
  * Запуск: seedDictionaries()  (ідемпотентно — оновлює за item_id, нічого не видаляє)
  */
 
-var SEED_ITEM_COLS = ["item_id", "role", "group_id", "group_title", "seq", "text", "type", "fields", "unit", "labels", "visible_on", "photo_required", "norm_min_1", "norm_max_1", "warn_min_1", "warn_max_1", "norm_min_2", "norm_max_2", "warn_min_2", "warn_max_2", "norm_min_3", "norm_max_3", "warn_min_3", "warn_max_3", "active_from", "active_to", "text_aliases", "notes"];
+var SEED_ITEM_COLS = ["item_id", "role", "group_id", "group_title", "seq", "text", "type", "fields", "unit", "labels", "visible_on", "photo_required", "norm_min_1", "norm_max_1", "warn_min_1", "warn_max_1", "norm_min_2", "norm_max_2", "warn_min_2", "warn_max_2", "norm_min_3", "norm_max_3", "warn_min_3", "warn_max_3", "active_from", "active_to", "text_aliases", "notes", "group_seq", "hint"];
 
 var SEED_ITEMS = [
   ["mech.1-1", "Механік", "compressor", "1. Компресорне приміщення", 1, "Температура компресорів", "number", 2, "°C", "№1;№2", "all", false, 15, 85, 20, 78, 15, 85, 20, 80, "", "", "", "", "2026-02-14", "", "", ""],

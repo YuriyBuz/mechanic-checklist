@@ -59,13 +59,36 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
     return !!r.salt && r.hash.length === 64 && JSON.stringify(r).indexOf('2468') === -1;
   }));
 
-  console.log('\n── нові типи пунктів ──');
-  const it34 = page.locator('#start-3-4'), it51 = page.locator('#start-5-1');
-  t('3-4 став кнопковим', (await it34.getAttribute('data-type')) === 'binary');
-  t('  варіанти правильні',
-    (await it34.locator('.option-btn').allTextContents()).join('|') === 'Помилок немає|Є помилка');
-  t('5-1 має три поля', (await it51.getAttribute('data-type')) === 'triple_input'
-    && (await it51.locator('[data-input-1],[data-input-2],[data-input-3]').count()) === 3);
+  console.log('\n── чек-лист v4 із сервера ──');
+  t('конфіг закешовано', await page.evaluate(() => !!localStorage.getItem('checklistConfigV4')));
+  const titles = await page.locator('#startShiftSection h3').allTextContents();
+  t('групи в порядку маршруту: 0 → … → 9', /^0\./.test(titles[0]) && /^9\./.test(titles[titles.length - 1]));
+  t('  зранку «Підсумок зміни» не показується', !titles.some(x => /^10\./.test(x)));
+  t('54 пункти на початку зміни', (await page.locator('#startShiftSection .checklist-item').count()) === 54);
+  t('підказка під пунктом 0-1', (await page.locator('#start-0-1 .item-hint').textContent()).includes('2-й і 3-й'));
+  t('під 0-2 — «запису немає», доки ніхто не здав кінець зміни',
+    (await page.locator('#start-0-2 .handover-box').textContent()).includes('немає'));
+  const it34 = page.locator('#start-3-4'), it56 = page.locator('#start-5-6');
+  t('3-4 кнопковий з фото', (await it34.getAttribute('data-type')) === 'binary'
+    && (await it34.locator('.option-btn').allTextContents()).join('|') === 'Помилок немає|Є помилка');
+  t('5-6 має три поля', (await it56.getAttribute('data-type')) === 'triple_input'
+    && (await it56.locator('[data-input-1],[data-input-2],[data-input-3]').count()) === 3);
+  t('7-12 має п’ять варіантів', (await page.locator('#start-7-12 .option-btn').count()) === 5);
+  t('колір кнопки — за статусом: «Вимкнено за таймером» зелене',
+    (await page.locator('#start-7-12 .option-btn').nth(1).getAttribute('data-kind')) === 'good');
+
+  console.log('\n── червона відповідь вимагає коментар ──');
+  await page.locator('#start-1-2 .option-btn', { hasText: 'Є' }).last().click(); await page.waitForTimeout(300);
+  t('вікно коментаря відкрилось само',
+    (await page.locator('#commentModal').evaluate(e => getComputedStyle(e).display)) === 'flex');
+  await page.click('#cancelCommentBtn'); await page.waitForTimeout(200);
+  t('підказка під пунктом: потрібен коментар',
+    (await page.locator('#start-1-2 .need-note').textContent()).includes('коментар'));
+  await page.locator('#start-1-2 .comment-btn').click(); await page.fill('#commentTextarea', 'E12 на пульті №2');
+  await page.click('#saveCommentBtn'); await page.waitForTimeout(200);
+  t('  після коментаря підказка зникла',
+    await page.locator('#start-1-2 .need-note').evaluate(e => e.classList.contains('hidden')));
+  await page.locator('#start-1-2 .option-btn').first().click(); await page.waitForTimeout(200);
 
   console.log('\n── заповнення ──');
   await page.evaluate(() => {
@@ -76,9 +99,12 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
       });
     });
   });
+  // фото потрібне пункту або першій відповіді (0-1 «Отримав» → фото)
   const needPhoto = await page.evaluate(() =>
-    checklistConfig.flatMap(g => g.items).filter(i => i.photoRequired &&
-      (i.visibleOn === 'all' || i.visibleOn === 'start')).map(i => i.id));
+    checklistConfig.flatMap(g => g.items).filter(i => (i.visibleOn === 'all' || i.visibleOn === 'start') &&
+      (i.photoRequired || String((i.meta[i.options[0]] || {}).requires || '').includes('фото'))).map(i => i.id));
+  t('зранку фото вимагають 6 пунктів (0-1 — через відповідь «Отримав»; 7-й, 10-1, — увечері)',
+    needPhoto.length === 6 && needPhoto.includes('0-1') && needPhoto.includes('7-14'));
   for (const id of needPhoto) {
     await page.setInputFiles(`#start-${id} .photo-input`, { name: 'p.jpg', mimeType: 'image/jpeg', buffer: JPEG });
     await page.waitForTimeout(250);
@@ -91,7 +117,9 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   console.log('\n── сесія переживає перезавантаження ──');
   await page.reload(); await page.waitForTimeout(900);
   t('вхід не питають удруге', !(await shown()));
-  t('відповіді 5-1 відновлено', (await page.locator('#start-5-1 [data-input-3]').inputValue()) === '22');
+  t('відповіді 5-6 відновлено', (await page.locator('#start-5-6 [data-input-3]').inputValue()) === '22');
+  t('чек-лист після перезавантаження — з кешу, той самий',
+    (await page.locator('#startShiftSection .checklist-item').count()) === 54);
 
   console.log('\n── відправка ──');
   for (const id of needPhoto) {
@@ -120,16 +148,66 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
                '_mech_start_[0-9a-f]{6}$').test(p.report_id));
   t('усі пункти з item_id', p.items.every(i => /^mech\./.test(i.item_id)));
   t('тексту пунктів більше не шлемо', p.items.every(i => i.text === undefined));
-  t('5-1 надіслав три числа за позиціями',
-    JSON.stringify(p.items.find(i => i.item_id === 'mech.5-1').values) === '["20","21","22"]');
+  t('версія чек-листа у звіті — з сервера', p.config_version === 'mech-v4');
+  t('5-6 надіслав три числа за позиціями',
+    JSON.stringify(p.items.find(i => i.item_id === 'mech.5-6').values) === '["20","21","22"]');
+  t('7-14 надіслав два числа і фото', (() => { const x = p.items.find(i => i.item_id === 'mech.7-14');
+    return JSON.stringify(x.values) === '["20","21"]' && !!x.photoData; })());
   t('1-1 надіслав два числа',
     JSON.stringify(p.items.find(i => i.item_id === 'mech.1-1').values) === '["20","21"]');
   const i34 = p.items.find(i => i.item_id === 'mech.3-4');
   t('3-4 надіслав варіант із довідника', i34.value === 'Помилок немає' && i34.values.length === 0);
   t('7-2 (одне число) надіслав values',
     JSON.stringify(p.items.find(i => i.item_id === 'mech.7-2').values) === '["20"]');
-  t('5-2 (текст) values порожній', p.items.find(i => i.item_id === 'mech.5-2').values.length === 0);
+  t('5-2 тепер кнопки: варіант із довідника, values порожній', (() => { const x = p.items.find(i => i.item_id === 'mech.5-2');
+    return x.value === 'Помилок немає' && x.values.length === 0; })());
+  t('0-1 «Отримав» із фото бланка', (() => { const x = p.items.find(i => i.item_id === 'mech.0-1');
+    return x.value === 'Отримав' && !!x.photoData; })());
+  t('коментар до 1-2 поїхав', p.items.find(i => i.item_id === 'mech.1-2').comment === 'E12 на пульті №2');
   t('фото додані', p.items.filter(i => i.photoData).length === needPhoto.length);
+
+  console.log('\n── кінець зміни: вимога залежить від відповіді, передача зміни ──');
+  await page.click('#endShiftBtn'); await page.waitForTimeout(400);
+  t('38 пунктів увечері', (await page.locator('#endShiftSection .checklist-item').count()) === 38);
+  const titlesEnd = await page.locator('#endShiftSection h3').allTextContents();
+  t('увечері є «Підсумок зміни», немає «Завдань»',
+    titlesEnd.some(x => /^10\./.test(x)) && !titlesEnd.some(x => /^0\./.test(x)));
+  await page.locator('#end-10-5 .option-btn', { hasText: 'Не потрібно' }).click(); await page.waitForTimeout(250);
+  t('10-5 «Не потрібно» — без коментаря',
+    (await page.locator('#commentModal').evaluate(e => getComputedStyle(e).display)) !== 'flex');
+  await page.locator('#end-10-5 .option-btn', { hasText: 'Подано' }).first().click(); await page.waitForTimeout(250);
+  t('10-5 «Подано» — просить текст',
+    (await page.locator('#commentModal').evaluate(e => getComputedStyle(e).display)) === 'flex');
+  await page.fill('#commentTextarea', 'Сальник насоса ХВО, 2 шт'); await page.click('#saveCommentBtn');
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    document.querySelectorAll('#endShiftSection .checklist-item').forEach(el => {
+      if (el.dataset.type === 'binary') { if (!el.dataset.value) el.querySelector('.option-btn').click(); }
+      else el.querySelectorAll('input[type=text]').forEach((i, k) => {
+        i.value = el.id === 'end-10-7' ? 'Насос №2 гуде — подивитись зранку' : String(20 + k);
+        i.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    });
+  });
+  const needPhotoEnd = await page.evaluate(() =>
+    checklistConfig.flatMap(g => g.items).filter(i => (i.visibleOn === 'all' || i.visibleOn === 'end') &&
+      (i.photoRequired || String((i.meta[i.options[0]] || {}).requires || '').includes('фото'))).map(i => i.id));
+  for (const id of needPhotoEnd) {
+    await page.setInputFiles(`#end-${id} .photo-input`, { name: 'p.jpg', mimeType: 'image/jpeg', buffer: JPEG });
+    await page.waitForTimeout(250);
+  }
+  t('увечері фото вимагають 5 пунктів', needPhotoEnd.length === 5 && needPhotoEnd.includes('10-1'));
+  await page.click('#mainSubmitBtn'); await page.waitForTimeout(400);
+  t('прев\'ю: усе заповнено', (await page.locator('#modalMessage').textContent()).includes('коректно'));
+  await page.click('#submitReportBtn'); await page.waitForTimeout(1800); await closeDlg();
+  const gotEnd = (await (await fetch(BASE + '/received')).json()).find(r => r.stage === 'Кінець зміни');
+  t('звіт кінця зміни дійшов із текстом передачі',
+    gotEnd && gotEnd.items.find(i => i.item_id === 'mech.10-7').value === 'Насос №2 гуде — подивитись зранку');
+  t('  і з текстом заявки', gotEnd.items.find(i => i.item_id === 'mech.10-5').comment === 'Сальник насоса ХВО, 2 шт');
+  // наступна зміна відкриває застосунок — під 0-2 має бути вчорашня передача
+  await page.reload(); await page.waitForTimeout(1500);
+  t('наступний вхід бачить передачу під 0-2',
+    (await page.locator('#start-0-2 .handover-text').textContent()).includes('Насос №2 гуде'));
 
   console.log('\n── звільнення діє негайно ──');
   await fetch(BASE + '/fire/EMP-0007');

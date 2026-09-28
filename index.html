@@ -169,6 +169,11 @@
             transition: background-color 0.3s ease;
         }
         .dark .error-highlight { background-color: rgba(239, 68, 68, 0.15) !important; }
+
+        /* v4: підказка під пунктом, передача попередньої зміни, вимога до відповіді */
+        .item-hint { line-height: 1.35; }
+        .handover-box { background-color: rgba(5, 150, 105, 0.08); border-left: 3px solid #059669; }
+        .dark .handover-box { background-color: rgba(52, 211, 153, 0.12); }
     </style>
 </head>
 <body class="bg-slate-50 font-sans">
@@ -305,122 +310,14 @@
         // --- УВАГА: ВСТАВ СЮДИ СВІЙ НОВИЙ URL ПІСЛЯ DEPLOY ---
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwF40NrWG2ijrDn5c-3TEsASL-fklpU-CnpigeQxs_Shxidt1xxf8wj4tYDzbMlxi-sHA/exec'; 
         
-        // Checklist Structure Configuration
-        const checklistConfig = [
-            {
-                id: 'compressor',
-                title: '1. Компресорне приміщення',
-                items: [
-                    { id: '1-1', text: 'Температура компресорів', type: 'dual_input', labels: ['№1', '№2'], unit: '°C', visibleOn: 'all' },
-                    { id: '1-2', text: 'Проконтролювати відсутність помилок на пультах керування компресорів.', type: 'binary', options: ['Відсутні', 'Є'], visibleOn: 'all' },
-                    { id: '1-3', text: 'Вимкнути систему нічного обігріву приміщення.', type: 'binary', options: ['Вимкнено', 'Увімкнено'], visibleOn: 'start' },
-                    { id: '1-4', text: 'Відкрити заслінки припливно-витяжної вентиляції.', type: 'binary', options: ['Відкрито', 'Закрито'], visibleOn: 'start' },
-                    { id: '1-3-end', text: 'Увімкнути систему нічного обігріву (якщо потрібно).', type: 'binary', options: ['Увімкнено', 'Не потр.'], visibleOn: 'end' },
-                    { id: '1-4-end', text: 'Закрити заслінки вентиляції.', type: 'binary', options: ['Закрито', 'Відкрито'], visibleOn: 'end' }
-                ]
-            },
-            {
-                id: 'wells',
-                title: '2. Свердловини №1 (ближня) та №2 (дальня)',
-                items: [
-                    { id: '2-1', text: 'Перевірити табло клапана тиску на наявність помилок.', type: 'binary', options: ['Немає', 'Є'], visibleOn: 'all' },
-                    { id: '2-2', text: 'Здійснити візуальний огляд цілісності трубопроводів.', type: 'binary', options: ['Цілі', 'Пошкоджені'], visibleOn: 'all' },
-                    { id: '2-3', text: 'Проконтролювати роботу насосів (відсутність стороннього шуму та вібрації).', type: 'binary', options: ['Норма', 'Шум/Вібрація'], visibleOn: 'all' }
-                ]
-            },
-            {
-                id: 'generator',
-                title: '3. Генератор',
-                items: [
-                    { id: '3-1', text: 'Провести зовнішній візуальний огляд генератора.', type: 'binary', options: ['Оглянуто', 'Зауваження'], visibleOn: 'all' },
-                    { id: '3-2', text: 'Переконатися у відсутності сторонніх шумів під час роботи.', type: 'binary', options: ['Норма', 'Сторонній шум', 'Генератор не запущений'], visibleOn: 'all' },
-                    { id: '3-3', text: 'Перевірити рівень вібрації корпусу та вузлів.', type: 'binary', options: ['Норма', 'Вібрація', 'Генератор не запущений'], visibleOn: 'all' },
-                    { id: '3-4', text: 'Зробити фото інформаційного табло генератора.', type: 'binary', options: ['Помилок немає', 'Є помилка'], photoRequired: true, visibleOn: 'all' }
-                ]
-            },
-            {
-                id: 'boiler',
-                title: '4. Котельні №1 та №2',
-                items: [
-                    { id: '4-1', text: 'Зняти показники манометрів тиску пари.', type: 'dual_input', labels: ['№1', '№2'], unit: 'бар', visibleOn: 'all' },
-                    { id: '4-2', text: 'Проконтролювати коректність роботи водяних насосів.', type: 'binary', options: ['Коректно', 'Збій'], visibleOn: 'all' },
-                    { id: '4-3', text: 'Перевірити рівень води в ємності забору води.', type: 'binary', options: ['Норма', 'Низький'], visibleOn: 'all' },
-                    { id: '4-4', text: 'Здійснити візуальний контроль рівнемірів та оглядового скла (вода, пара).', type: 'binary', options: ['Видно', 'Не видно'], visibleOn: 'all' },
-                    { id: '4-5', text: 'Перевірити роботу димососа та вентиляторів топки.', type: 'binary', options: ['Справні', 'Несправні'], visibleOn: 'all' },
-                    { id: '4-6', text: 'Перевірити герметичність паропроводів, засувок та вентилів.', type: 'binary', options: ['Герметично', 'Пропуск'], visibleOn: 'all' },
-                    { id: '4-7', text: 'Провести огляд щита керування котельнею.', type: 'binary', options: ['Оглянуто', 'Зауваження'], visibleOn: 'all' }
-                ]
-            },
-            {
-                id: 'fridge',
-                title: '5. Холодильний контейнер',
-                items: [
-                    { id: '5-1', text: 'Зіставити поточну температуру всередині з установленим режимом.', type: 'triple_input', labels: ['Точка 1', 'Точка 2', 'Точка 3'], unit: '°C', visibleOn: 'all' },
-                    // Оновлене питання (обов'язкове фото)
-                    { id: '5-2', text: 'Зробити фото інформаційного табло контролера.', type: 'input', unit: 'Внести номер помилки/ОК', photoRequired: true, visibleOn: 'all' },
-                    { id: '5-3', text: 'Оглянути ущільнювачі дверей на цілісність та відсутність обмерзання.', type: 'binary', options: ['Цілі', 'Пошкоджені'], visibleOn: 'all' },
-                    { id: '5-4', text: 'Проконтролювати роботу вентиляторів (відсутність звуків/вібрацій).', type: 'binary', options: ['Норма', 'Шум'], visibleOn: 'all' },
-                    { id: '5-5', text: 'Перевірити справність конденсатовідвідника.', type: 'binary', options: ['Норма', 'Забито'], visibleOn: 'all' }
-                ]
-            },
-            {
-                id: 'production',
-                title: '6. Виробничі зони',
-                items: [
-                    { id: '6-1', text: 'Перевірити справність робочого освітлення на всіх дільницях.', type: 'binary', options: ['Справне', 'Несправне'], visibleOn: 'all' },
-                    { id: '6-2', text: 'Оглянути стан парового та водяного трубопроводів на виробничій дільниці', type: 'binary', options: ['Норма', 'Витік'], visibleOn: 'all' },
-                    { id: '6-3', text: 'Увімкнути загальну систему вентиляції.', type: 'binary', options: ['Увімкнено', 'Вимкнено'], visibleOn: 'start' },
-                    // Змінений текст про тиск повітря (початок)
-                    { id: '6-4', text: 'Увімкнути подачу тиску повітря на ресивери.', type: 'binary', options: ['Увімкнено', 'Вимкнено'], visibleOn: 'start' },
-                    { id: '6-3-end', text: 'Вимкнути загальну вентиляцію (якщо зміна закінчена).', type: 'binary', options: ['Вимкнено', 'Працює'], visibleOn: 'end' },
-                    // Змінений текст про тиск повітря (кінець)
-                    { id: '6-4-end', text: 'Вимкнути подачу тиску повітря на ресивери.', type: 'binary', options: ['Закрито', 'Відкрито'], visibleOn: 'end' },
-                    // Нове питання з тултипом (кінець)
-                    { id: '6-6-end', text: 'Протерти термоголовку виробничого принтера.', type: 'binary', options: ['Протерто', 'Не протерто'], visibleOn: 'end', hasTooltip: true, 
-                      tooltipHtml: `
-                        <div class="text-left text-slate-800 dark:text-slate-200">
-                            <h4 class="font-bold text-lg mb-3 text-emerald-700 dark:text-emerald-400">🛠️ Очищення термоголовки принтера</h4>
-                            <p class="mb-3 text-sm"><strong>Матеріали:</strong> Ізопропіловий спирт, безворсова серветка (або ватна паличка).</p>
-                            <p class="font-bold text-sm mb-2">Порядок дій:</p>
-                            <ul class="text-sm space-y-2 mb-4 list-none pl-0">
-                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">🔌</span> <strong>Вимкніть живлення.</strong> Обов'язково знеструмте принтер перед обслуговуванням.</span></label></li>
-                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">🖨️</span> <strong>Звільніть доступ.</strong> Відкрийте кришку, підніміть механізм. Витягніть етикетки та ріббон.</span></label></li>
-                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">💧</span> <strong>Змочіть аплікатор.</strong> Нанесіть ізопропіловий спирт на серветку (без крапель).</span></label></li>
-                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">🧹</span> <strong>Протріть головку.</strong> Акуратно проведіть по темній лінії нагрівального елемента суворо В ОДНОМУ НАПРЯМКУ. Не тріть туди-сюди!</span></label></li>
-                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">⏳</span> <strong>Просушіть.</strong> Зачекайте 1-2 хвилини до повного випаровування спирту.</span></label></li>
-                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">✅</span> <strong>Зберіть принтер.</strong> Встановіть матеріали, закрийте до клацання.</span></label></li>
-                            </ul>
-                            <div class="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-3 rounded text-sm text-red-800 dark:text-red-200 shadow-sm">
-                                <p class="font-bold mb-2 flex items-center text-red-600 dark:text-red-400"><span class="mr-2 text-lg">🛑</span> КРИТИЧНІ ЗАБОРОНИ (Увага!)</p>
-                                <ul class="list-disc pl-5 space-y-1">
-                                    <li>Заборонено торкатися елемента голими пальцями.</li>
-                                    <li>Заборонено використовувати ножі та інші жорсткі предмети для бруду.</li>
-                                    <li>Заборонено використовувати воду, ацетон чи інші розчинники.</li>
-                                </ul>
-                            </div>
-                        </div>
-                      ` 
-                    },
-                    { id: '6-5', text: 'Оглянути осушувач повітря на справність.', type: 'binary', options: ['Справний', 'Несправний'], visibleOn: 'all' }
-                ]
-            },
-            {
-                id: 'hvo',
-                title: '7. ХВО (Хімічне водоочищення)',
-                items: [
-                    { id: '7-1', text: 'Тиск води (вхід/вихід)', type: 'dual_input', labels: ['Вхід', 'Вихід'], unit: 'бар', visibleOn: 'all' },
-                    { id: '7-2', text: 'Проконтролювати робочий тиск повітря і зробити фото панелі з ротаметром.', type: 'input', unit: 'бар', numeric: true, photoLabel: 'Фото', photoRequired: true, visibleOn: 'all' },
-                    { id: '7-3', text: 'Переконатися у відсутності помилок процесу регенерації.', type: 'binary', options: ['Немає', 'Є помилка'], visibleOn: 'all' },
-                    { id: '7-4', text: 'Перевірити рівень солі та води в ємностях.', type: 'binary', options: ['Норма', 'Низький'], visibleOn: 'all' },
-                    { id: '7-5', text: 'Оглянути всі вузли системи (цілісність).', type: 'binary', options: ['Цілі', 'Пошкоджені'], visibleOn: 'all' },
-                    { id: '7-6', text: 'Перевірити щит керування (час, автомати, напруга).', type: 'binary', options: ['Норма', 'Збій'], visibleOn: 'all' },
-                    { id: '7-7', text: 'Проконтролювати роботу підвищувальних насосів.', type: 'binary', options: ['Норма', 'Збій'], visibleOn: 'all' },
-                    { id: '7-8', text: 'UF знезараження H2O: Насос працює?', type: 'binary', options: ['Так', 'Ні'], visibleOn: 'all' },
-                    { id: '7-9', text: 'UF знезараження H2O: UF лампа світить?', type: 'binary', options: ['Так', 'Ні'], visibleOn: 'all' },
-                    { id: '7-10', text: 'UF знезараження H2O: Вода подається в ємності №1 і №2?', type: 'binary', options: ['Так', 'Ні'], visibleOn: 'all' }
-                ]
-            }
-        ];
+        /* Чек-лист більше не живе в цьому файлі. Його віддає сервер із довідників
+           01_Пункти / 02_Варіанти (дія getConfig) — тому v4 і кожна наступна правка
+           є зміною таблиці, а не коду. Останній отриманий конфіг лежить у localStorage:
+           без зв'язку застосунок працює з нього. Порожній список тут — лише до
+           першого входу онлайн. */
+        let checklistConfig = [];
+        let serverConfig = null;          // версія, передача зміни, під яким пунктом її показати
+        const CONFIG_KEY = 'checklistConfigV4';
 
         // --- Custom Dialog System ---
         const showCustomDialog = (options) => {
@@ -499,8 +396,8 @@
            і саме воно потрапляє у звіт. Підмінити автора неможливо —
            сервер бере ім'я з підтвердженої сесії, а не з запиту.          */
 
-        const APP_VERSION    = 'checklist-client-2026-08-25';
-        const CONFIG_VERSION = 'client-2026-08-25';
+        const APP_VERSION    = 'checklist-client-2026-09-28-v4';
+        const CONFIG_VERSION = 'client-no-config';   // лише доки сервер не віддав свою версію
         const SESSION_KEY    = 'checklistSessionV1';
         const DEVICE_KEY     = 'checklistDeviceIdV1';
         const ACTIVITY_KEY   = 'checklistLastActivityV1';
@@ -516,6 +413,7 @@
         const UNLOCK_ITERATIONS  = 150000;
 
         let session = null;
+        let refreshConfig = async () => {};   // призначається після старту застосунку
         let idleTimer = null;
         let lastActivityWrite = 0;
         /* Хук на зміну сесії: підставляє прізвище у поле механіка. Вхід буває
@@ -740,6 +638,7 @@
             hideLoginOverlay();
             startIdleWatch();
             onSessionChange();
+            if (!offline) await refreshConfig();     // чек-лист і передача зміни — з довідника
             if (offline) {
                 customAlert('Зв\'язку немає. Чек-лист можна заповнити — звіт піде, щойно ' +
                             'з\'явиться інтернет і ви увійдете онлайн.');
@@ -782,6 +681,7 @@
                         }
                         saveSession(Object.assign({}, session, { user: r.user }));
                         onSessionChange();
+                        refreshConfig();                     // у фоні: кеш уже показано
                     } else if (r) {
                         dropSession();
                     }
@@ -856,6 +756,94 @@
             /** Поля числових пунктів по порядку: data-input-1, -2, -3. */
             const fieldInputs = (el) => Array.from(el.querySelectorAll('[data-input-1], [data-input-2], [data-input-3]'));
 
+            /* ── чек-лист із довідника ──
+               Сервер віддає плаский список пунктів у порядку маршруту з варіантами,
+               статусами й вимогами (requires). Тут він стає тим самим checklistConfig,
+               з яким працює решта застосунку: групи → пункти → кнопки. */
+            const truthy = (v) => v === true || v === 1 || /^(true|1|так)$/i.test(String(v || '').trim());
+            const clientType = (it) => {
+                if (it.type === 'number') {
+                    const n = Number(it.fields) || 1;
+                    return n >= 3 ? 'triple_input' : (n === 2 ? 'dual_input' : 'input');
+                }
+                return it.type === 'binary' ? 'binary' : 'input';
+            };
+            const adoptConfig = (cfg) => {
+                if (!cfg || !Array.isArray(cfg.items)) return false;
+                const groups = [];
+                cfg.items.forEach(it => {
+                    let g = groups[groups.length - 1];
+                    if (!g || g.id !== it.group_id) {
+                        g = { id: it.group_id, title: it.group_title || '', items: [] };
+                        groups.push(g);
+                    }
+                    const meta = {};
+                    (it.options || []).forEach(o => { meta[o.value] = { status: o.status || '', requires: o.requires || '' }; });
+                    const type = clientType(it);
+                    g.items.push({
+                        id: String(it.item_id).replace(/^mech\./, ''),
+                        text: it.text, type: type,
+                        options: (it.options || []).map(o => o.value), meta: meta,
+                        labels: it.labels || [], unit: it.unit || '',
+                        numeric: it.type === 'number',
+                        photoRequired: truthy(it.photo_required),
+                        photoLabel: (type === 'input' && truthy(it.photo_required)) ? 'Фото' : undefined,
+                        visibleOn: it.visible_on || 'all',
+                        hint: it.hint || ''
+                    });
+                });
+                checklistConfig = groups;
+                serverConfig = { config_version: cfg.config_version || '', handover: cfg.handover || null,
+                                 handover_item: String(cfg.handover_item || '').replace(/^mech\./, '') };
+                return true;
+            };
+            const loadCachedConfig = () => {
+                try { return JSON.parse(localStorage.getItem(CONFIG_KEY) || 'null'); } catch (e) { return null; }
+            };
+            refreshConfig = async () => {
+                let res = null;
+                try { res = await api({ action: 'getConfig', role: 'Механік', token: sessionToken() }); }
+                catch (e) { return false; }                 // зв'язку немає — лишаємося на кеші
+                if (!res || !res.ok || !res.config) return false;
+                const cached = JSON.stringify(loadCachedConfig());
+                const fresh = JSON.stringify(res.config);
+                try { localStorage.setItem(CONFIG_KEY, fresh); } catch (e) {}
+                if (fresh === cached) { adoptConfig(res.config); return true; }
+                // чек-лист змінився — перемальовуємо; відповіді відновляться зі сховища
+                adoptConfig(res.config);
+                if (currentSection === 'start' || currentSection === 'end') switchView(currentSection);
+                return true;
+            };
+
+            /* Текст передачі зміни й підказки вставляються в розмітку, а передачу пише
+               інший механік — тому тільки через екранування, як і все, що набрала людина. */
+            const esc = (v) => String(v === null || v === undefined ? '' : v)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+            /** Що вимагає ця відповідь: фото / коментар. Червона відповідь — коментар завжди. */
+            const needsFor = (cfg, value) => {
+                const m = (cfg && cfg.meta && cfg.meta[value]) || {};
+                const req = String(m.requires || '');
+                return { photo: !!(cfg && cfg.photoRequired) || req.indexOf('фото') > -1,
+                         comment: m.status === 'alert' || req.indexOf('коментар') > -1 };
+            };
+            /* Підказка під пунктом одразу після вибору: «поясніть у коментарі», «потрібне фото».
+               Так механік бачить вимогу там, де натиснув, а не в списку помилок перед відправкою. */
+            const refreshNeedNote = (item) => {
+                const note = item.querySelector('.need-note');
+                if (!note) return;
+                const configId = item.id.replace(/^(start|end)-/, '');
+                const cfg = findConfigItem(configId);
+                const value = item.dataset.value || '';
+                const need = (item.dataset.type === 'binary' && value) ? needsFor(cfg, value)
+                                                                        : { photo: !!(cfg && cfg.photoRequired), comment: false };
+                const parts = [];
+                if (need.comment && !item.querySelector('.comment-text').textContent.trim()) parts.push('Потрібен коментар: що саме і де.');
+                if (need.photo && !currentPhotos[item.id]) parts.push('Потрібне фото.');
+                note.textContent = parts.join(' ');
+                note.classList.toggle('hidden', !parts.length);
+            };
+
             const findConfigItem = (configId) => {
                 for (const g of checklistConfig) {
                     const f = g.items.find(i => i.id === configId);
@@ -912,7 +900,7 @@
                     business_date: bizDate,
                     stage: stage,
                     role: 'Механік',
-                    config_version: CONFIG_VERSION,
+                    config_version: (serverConfig && serverConfig.config_version) || CONFIG_VERSION,
                     app_version: APP_VERSION,
                     summary: `Виконано ${done} з ${els.length}`,
                     items: els.map(el => {
@@ -974,6 +962,11 @@
                 
                 const groupsContainer = headerDiv.querySelector('#groupsContainer');
 
+                if (!checklistConfig.length) {
+                    groupsContainer.innerHTML = '<p class="text-muted text-center py-6" id="noConfigNote">' +
+                        'Чек-лист ще не завантажено. Перевірте зв\'язок і увійдіть за PIN ще раз.</p>';
+                }
+
                 checklistConfig.forEach(group => {
                     const activeItems = group.items.filter(item => item.visibleOn === 'all' || item.visibleOn === sectionId);
                     if (activeItems.length === 0) return;
@@ -1015,14 +1008,11 @@
 
                         let controlsHtml = '';
                         if (item.type === 'binary') {
-                            const buttonsHtml = item.options.map((opt, index) => {
-                                let kind = 'good';
-                                if (item.options.length === 3) {
-                                    if (index === 1) kind = 'bad';
-                                    if (index === 2) kind = 'neutral';
-                                } else {
-                                    if (index === item.options.length - 1) kind = 'bad';
-                                }
+                            // колір кнопки — за статусом із довідника, а не за позицією:
+                            // «Вимкнено за таймером» зелене, «Частково» жовте, «Не в AUTO» червоне
+                            const buttonsHtml = item.options.map((opt) => {
+                                const st = (item.meta[opt] || {}).status;
+                                const kind = st === 'alert' ? 'bad' : (st === 'warn' ? 'neutral' : 'good');
                                 return `<button class="option-btn px-2 py-2 rounded text-sm font-medium flex-1 min-h-[40px]" data-val="${opt}" data-kind="${kind}">${opt}</button>`;
                             }).join('');
 
@@ -1070,12 +1060,22 @@
                             `;
                         }
 
+                        const hintHtml = item.hint ? `<div class="item-hint text-sm text-muted mt-1">${esc(item.hint)}</div>` : '';
+                        let handoverHtml = '';
+                        if (serverConfig && serverConfig.handover_item === item.id) {
+                            const h = serverConfig.handover;
+                            handoverHtml = h && h.text
+                                ? `<div class="handover-box mt-2 p-3 rounded-lg text-sm"><div class="font-semibold mb-1">Передача від ${esc(h.name || 'попередньої зміни')}${h.date ? ', ' + esc(h.date) : ''}:</div><div class="handover-text whitespace-pre-line">${esc(h.text)}</div></div>`
+                                : `<div class="handover-box mt-2 p-3 rounded-lg text-sm text-muted">Запису передачі попередньої зміни немає.</div>`;
+                        }
                         li.innerHTML = `
                             <div class="w-full">
                                 <div class="flex justify-between items-start">
-                                    <div class="flex flex-1 items-center mr-2">
+                                    <div class="flex-1 mr-2">
                                         <span class="task-text font-medium text-lg leading-tight">${item.text}</span>
                                         ${tooltipHtml}
+                                        ${hintHtml}
+                                        ${handoverHtml}
                                     </div>
                                     <div class="flex items-center gap-1 photo-controls">
                                         <button class="comment-btn p-2 rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors h-10 w-10 flex items-center justify-center flex-shrink-0" title="Додати коментар">
@@ -1089,6 +1089,7 @@
                                     <img src="" class="photo-thumbnail hidden">
                                 </div>
                                 <div class="comment-text mt-1 hidden w-full text-sm text-gray-500 italic"></div>
+                                <div class="need-note mt-1 hidden text-sm text-red-600 font-medium"></div>
                             </div>
                         `;
                         list.appendChild(li);
@@ -1161,6 +1162,7 @@
                             thumb.classList.remove('hidden');
                             thumb.classList.add('show');
                             item.querySelector('.photo-btn').classList.add('has-photo');
+                            refreshNeedNote(item);
                             item.classList.remove('error-highlight');
                             setPhotoBusy(-1);
                         };
@@ -1228,6 +1230,10 @@
                                 item.querySelector('.print-value').textContent = `Обрано: ${btn.dataset.val}`;
                                 saveState();
                                 updateProgress();
+                                refreshNeedNote(item);
+                                // червона відповідь без пояснення не піде — просимо його одразу
+                                const need = needsFor(findConfigItem(id.replace(/^(start|end)-/, '')), btn.dataset.val);
+                                if (need.comment && !item.querySelector('.comment-text').textContent.trim()) openCommentModal(item);
                             });
                         });
                     } else if (type === 'input') {
@@ -1295,6 +1301,7 @@
                         else cBtn.classList.remove('has-comment');
 
                         saveState();
+                        refreshNeedNote(currentCommentItem);
                     }
                     commentModal.style.display = 'none';
                 });
@@ -1575,17 +1582,21 @@
                     
                     const uniqueId = item.id;
                     const configId = uniqueId.replace(`${section}-`, '');
-                    let isPhotoRequired = false;
-                    checklistConfig.forEach(g => {
-                        const cfgItem = g.items.find(i => i.id === configId);
-                        if (cfgItem && cfgItem.photoRequired) isPhotoRequired = true;
-                    });
-
+                    const cfgItem = findConfigItem(configId);
                     const isFilled = item.classList.contains('completed');
                     const hasPhoto = !!currentPhotos[uniqueId];
-                    
+                    const hasComment = !!item.querySelector('.comment-text').textContent.trim();
+                    // вимога залежить від відповіді: фото при «Отримав», текст при «Подано»,
+                    // коментар при будь-якій червоній відповіді
+                    const need = (item.dataset.type === 'binary' && item.dataset.value)
+                        ? needsFor(cfgItem, item.dataset.value)
+                        : { photo: !!(cfgItem && cfgItem.photoRequired), comment: false };
+                    const isPhotoRequired = need.photo;
+                    const isCommentRequired = need.comment;
+
                     let isItemValid = isFilled;
                     if (isPhotoRequired && !hasPhoto) isItemValid = false;
+                    if (isCommentRequired && !hasComment) isItemValid = false;
 
                     if (!isItemValid) {
                         allCompleted = false;
@@ -1598,6 +1609,8 @@
                     let valDisplay = item.dataset.value || '';
                     if (!isFilled) valDisplay = '<span class="text-red-500 font-bold">Не заповнено</span>';
                     else if (isPhotoRequired && !hasPhoto) valDisplay = `<span class="text-red-500 font-bold">${valDisplay} (Бракує фото)</span>`;
+                    else if (isCommentRequired && !hasComment) valDisplay = `<span class="text-red-500 font-bold">${valDisplay} (Потрібен коментар)</span>`;
+                    if (!isItemValid) refreshNeedNote(item);
                     
                     const photoIcon = hasPhoto ? '📷' : '';
                     tableHtml += `<tr><td class="${!isItemValid ? 'text-red-600 font-medium' : ''}">${text}</td><td>${valDisplay} ${photoIcon}</td></tr>`;
@@ -1628,7 +1641,7 @@
                     newBtn.className = 'bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors animate-pulse w-full';
                     newBtn.addEventListener('click', () => {
                         modal.style.display = 'none';
-                        customAlert(`Ви пропустили ${incompleteItems.length} пунктів (або не додали обов'язкове фото)! Будь ласка, заповніть їх (вони підсвічені червоним та блимають).`);
+                        customAlert(`Ви пропустили ${incompleteItems.length} пунктів (або не додали обов'язкове фото чи коментар)! Будь ласка, заповніть їх (вони підсвічені червоним та блимають).`);
                         
                         setTimeout(() => {
                             const firstInvalid = document.querySelector('.error-highlight');
@@ -1787,6 +1800,7 @@
 
             loadState();
             updateNetworkStatus();
+            adoptConfig(loadCachedConfig());   // те, що бачили минулого разу — доки не прийде свіже
 
             await bootAuth();      // тут застосунок чекає, доки не увійдуть за PIN
             applySession();

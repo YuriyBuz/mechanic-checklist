@@ -414,5 +414,103 @@ t('повторний запуск не дублює рядків',
 console.log('   ' + schMsg);
 console.log('   → ' + alert.to);
 
+console.log('\n── v4: довідник і конфіг для клієнта ──');
+['Schema', 'Seed', 'SeedV4', 'Migrate'].forEach(f =>
+  vm.runInContext(fs.readFileSync(SRC + f + '.gs', 'utf8'), ctx, { filename: f + '.gs' }));
+const todayStr = businessDate();
+const cfgMech = () => buildClientConfig_('Механік', null);
+// старий 7-1 у фікстурі — щоб перевірити, що seedV4 відправляє його на пенсію
+appendRows(SH.ITEMS, [(() => { const r = Array(28).fill(''); r[0] = 'mech.7-1'; r[1] = 'Механік';
+  r[2] = 'hvo'; r[3] = '7. ХВО'; r[4] = 1; r[5] = 'Тиск води (вхід/вихід)'; r[6] = 'number'; r[7] = 2;
+  r[10] = 'all'; r[24] = '2026-02-14'; return r; })()]);
+t('до seedV4 старий 7-1 у конфігу', cfgMech().items.some(i => i.item_id === 'mech.7-1'));
+t('до seedV4 клієнт отримує mech-v3', cfgMech().config_version === 'mech-v3');
+
+// запуск у майбутньому: рядки вже в таблиці, але клієнт їх ще не бачить
+const r1 = seedV4('2099-01-01');
+t('seedV4 з майбутньою датою: у таблиці 66 пунктів механіка',
+  readTable(SH.ITEMS).rows.filter(r => /^mech\./.test(r[0]) && r[1] === 'Механік').length >= 66);
+t('  але сьогодні версія ще mech-v3', cfgMech().config_version === 'mech-v3');
+t('  і нових пунктів у конфігу немає', !cfgMech().items.some(i => i.item_id === 'mech.0-1'));
+
+// запуск сьогодні — так перевіряють на одному телефоні до старту
+const r2 = seedV4(todayStr);
+const cfg = cfgMech();
+const start = cfg.items.filter(i => i.visible_on === 'all' || i.visible_on === 'start').length;
+const end = cfg.items.filter(i => i.visible_on === 'all' || i.visible_on === 'end').length;
+t('сьогодні — mech-v4', cfg.config_version === 'mech-v4');
+t('66 пунктів · початок 54 · кінець 38', cfg.items.length === 66 && start === 54 && end === 38);
+t('старих пунктів у конфігу немає', !cfg.items.some(i => V4_RETIRE.indexOf(i.item_id) > -1));
+t('  але в таблиці вони лишилися з active_to = день перед запуском',
+  readTable(SH.ITEMS).rows.some(r => r[0] === 'mech.7-1' && String(r[25]) < todayStr && r[25]));
+t('  і в конфігу 7-1 більше немає', !cfg.items.some(i => i.item_id === 'mech.7-1'));
+t('порядок — маршрут: перша група 0, остання 10',
+  /^0\./.test(cfg.items[0].group_title) && /^10\./.test(cfg.items[cfg.items.length - 1].group_title));
+t('  групи не перемішані', (() => {
+  const seen = []; cfg.items.forEach(i => { if (seen[seen.length - 1] !== i.group_id) seen.push(i.group_id); });
+  return seen.length === 11 && new Set(seen).size === 11;
+})());
+const opt = (id, v) => (cfg.items.find(i => i.item_id === id) || { options: [] }).options.find(o => o.value === v);
+t('0-1 «Отримав» вимагає фото, «Завдань немає» — червоне без фото',
+  opt('mech.0-1', 'Отримав').requires === 'фото' && opt('mech.0-1', 'Завдань немає').status === 'alert' &&
+  opt('mech.0-1', 'Завдань немає').requires === '');
+t('10-5: текст лише при «Подано» і «Потрібно — не подано»',
+  opt('mech.10-5', 'Не потрібно').requires === '' && opt('mech.10-5', 'Подано').requires === 'коментар' &&
+  opt('mech.10-5', 'Потрібно — не подано').requires === 'коментар');
+t('10-1 «Частково» — увага + коментар',
+  opt('mech.10-1', 'Частково — причина в коментарі').status === 'warn' &&
+  opt('mech.10-1', 'Частково — причина в коментарі').requires === 'коментар');
+t('7-12 «Вимкнено за таймером» — норма', opt('mech.7-12', 'Вимкнено за таймером').status === 'ok');
+t('3-4 фото табло Г1 — лише зранку', cfg.items.find(i => i.item_id === 'mech.3-4').visible_on === 'start');
+t('4-9 «Котел №2» поруч із тиском пари', (() => {
+  const ids = cfg.items.map(i => i.item_id);
+  return ids.indexOf('mech.4-9') === ids.indexOf('mech.4-1') + 1;
+})());
+t('підказки доїжджають', /2-й і 3-й/.test(cfg.items.find(i => i.item_id === 'mech.0-1').hint));
+t('повторний seedV4 нічого не змінює', /додано 0, оновлено 0/.test(seedV4(todayStr)));
+t('seedDictionaries після v4 не повертає v3',
+  /пропущено/.test(seedDictionaries()) && cfgMech().items.find(i => i.item_id === 'mech.7-4').visible_on === 'start');
+t('майстра v4 не чіпає', (() => {
+  const m = buildClientConfig_('Майстер', null);
+  return m.config_version === 'master-v1' && m.handover === undefined && !m.items.some(i => /^mech\./.test(i.item_id));
+})());
+console.log('   ' + r2.split('\n').join('\n   '));
+
+console.log('\n── v4: передача зміни під пунктом 0-2 ──');
+t('поки нікого не було — передачі немає', cfg.handover === null && cfg.handover_item === 'mech.0-2');
+appendRows(SH.ANSWERS, [(() => { const r = Array(17).fill('');
+  r[0] = 'h1'; r[1] = 'R-H1'; r[2] = todayStr; r[3] = 'Кінець зміни'; r[4] = 'Механік'; r[5] = 'U-003';
+  r[6] = 'mech.10-7'; r[9] = 'Перевірити насос №2 — гуде.'; r[13] = 'ok'; return r; })()]);
+const h = cfgMech().handover;
+t('останній 10-7 віддається з автором і датою',
+  h && h.text === 'Перевірити насос №2 — гуде.' && h.name === 'Гора Андрій Олександрович' && h.date === todayStr);
+t('getConfig через POST теж працює', (() => {
+  const res = JSON.parse(doPost({ postData: { contents: JSON.stringify({ action: 'getConfig', role: 'Механік', token: adm.token, deviceId: 'dev5' }) } }));
+  return res.ok && res.config.items.length === 66 && res.config.can && res.config.can.mech === true;
+})());
+
+console.log('\n── v4: норми з рішень 28.09 ──');
+store.props['PHOTO_FOLDER_ID'] = '';
+const stV4 = (id, values, value) => {
+  store.mail.length = 0;
+  const r = submitReport_({ report_id: 'N' + Math.random(), business_date: todayStr, stage: 'Кінець зміни',
+    role: 'Механік', token: adm.token, deviceId: 'dev5',
+    items: [{ item_id: id, value: value || '', values: values || [], comment: '' }] });
+  return r.counts;
+};
+t('5-6: −15 / −16 / −4 → уставка ок, контролер ок, реєстратор увага',
+  (() => { const c = stV4('mech.5-6', ['-15', '-16', '-4']); return c.warn === 1 && !c.alert; })());
+t('5-6: уставка −18 → увага; контролер +1 → відхилення',
+  (() => { const c = stV4('mech.5-6', ['-18', '1', '-10']); return c.warn === 0 && c.alert === 1; })());
+t('4-1: №2 порожнє (котел стоїть) → без сигналу',
+  (() => { const c = stV4('mech.4-1', ['4', '']); return c.ok === 1 && !c.warn && !c.alert; })());
+t('4-1: 0 бар на працюючому котлі → увага',
+  (() => { const c = stV4('mech.4-1', ['4', '0']); return c.warn === 1; })());
+t('10-3: 2 виклики → увага; 4 → відхилення',
+  stV4('mech.10-3', ['2', '0']).warn === 1 && stV4('mech.10-3', ['4', '0']).alert === 1);
+t('10-2 без норми — завжди норма', stV4('mech.10-2', ['7', '3']).ok === 1);
+t('7-14: 3,8 / 3,3 → увага по «після»; 3,8 / 3,4 — норма',
+  stV4('mech.7-14', ['3.8', '3.3']).warn === 1 && stV4('mech.7-14', ['3.8', '3.4']).ok === 1);
+
 console.log('\n' + (fails ? '❌ ПОМИЛОК: ' + fails : '✅ Усі перевірки пройдено'));
 process.exit(fails ? 1 : 0);

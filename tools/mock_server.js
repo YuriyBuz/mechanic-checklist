@@ -94,6 +94,19 @@ const srv = http.createServer((req, res) => {
       return json({ ok: true, token: tokenFor(hits[0], p.deviceId),
                     expires_at: Date.now() + 12 * 3600 * 1000, user: pub(hits[0]) });
     }
+    if (act === 'getConfig') {
+      // те саме, що віддає buildClientConfig_ після seedV4() — збирається gen_config_fixture.js
+      const cfg = JSON.parse(fs.readFileSync(__dirname + '/config_fixture.json', 'utf8'));
+      const last = received.slice().reverse().find(r => r.stage === 'Кінець зміни' &&
+        (r.items || []).some(i => i.item_id === 'mech.10-7' && i.value));
+      cfg.handover = last
+        ? { text: last.items.find(i => i.item_id === 'mech.10-7').value, name: last._author,
+            date: last.business_date, report_id: last.report_id }
+        : null;
+      const u = bySession(p.token, p.deviceId);
+      cfg.can = u ? u.can : null;
+      return json({ ok: true, config: cfg });
+    }
     if (act === 'whoami') {
       const u = bySession(p.token, p.deviceId);
       return u ? json({ ok: true, user: pub(u) })

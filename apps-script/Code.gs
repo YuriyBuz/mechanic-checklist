@@ -51,6 +51,12 @@ function doPost(e) {
   try {
     if (action === 'login')  return jsonOut(loginResponse_(loginWithPin_(payload.pin, payload.deviceId)));
     if (action === 'whoami') return jsonOut(sessionResponse_(verifySession_(payload.token, payload.deviceId)));
+    // Клієнт ходить лише POST-ом (простий запит без CORS-преамбули), тому конфіг
+    // віддається і тут, а не тільки в doGet.
+    if (action === 'getConfig') {
+      var who = payload.token ? verifySession_(payload.token, payload.deviceId) : null;
+      return jsonOut({ ok: true, config: buildClientConfig_(payload.role, who) });
+    }
     if (action !== 'submit') return jsonOut({ ok: false, error: 'unknown action: ' + action });
   } catch (err) {
     logEvent('Техніка', 'action.failed', action + ': ' + err, {});
@@ -421,7 +427,14 @@ function savePhotos_(p, answers, dict) {
  *
  * role — «Механік» або «Майстер». Якщо переданий токен, віддаємо тільки те,
  * на що ця людина має право: майстер не має бачити чек-лист механіка і навпаки.
+ *
+ * Саме звідси застосунок бере чек-лист із v4: додати пункт, змінити частоту чи
+ * норму, поставити active_to — і клієнт підхопить це при наступному вході,
+ * без правок у index.html.
  */
+var HANDOVER_SOURCE = 'mech.10-7';   // де механік пише передачу зміни
+var HANDOVER_SHOW   = 'mech.0-2';    // під яким пунктом наступна зміна її читає
+
 function buildClientConfig_(role, who) {
   var it = readTable(SH.ITEMS), op = readTable(SH.OPTIONS), em = readTable(SH.EMPLOYEES);
   var today = businessDate();
@@ -434,34 +447,107 @@ function buildClientConfig_(role, who) {
   }
   var wantRole = ['Механік', 'Майстер'].indexOf(String(role)) > -1 ? String(role) : '';
 
+  var reqCol = op.col.requires;
   var opts = {};
   op.rows.forEach(function (r) {
     if (!r[0] || String(r[4]).trim() === 'ні') return;   // історичні варіанти не показуємо
-    (opts[r[0]] = opts[r[0]] || []).push({ value: r[2], status: r[3] });
+    opts[r[0]] = opts[r[0]] || [];
+    opts[r[0]].push({ value: r[2], status: String(r[3] || '').trim(),
+                      requires: reqCol === undefined ? '' : String(r[reqCol] || '').trim() });
   });
 
-  var items = it.rows.filter(function (r) {
+  var items = [];
+  it.rows.forEach(function (r, idx) {
     var o = {};
     it.header.forEach(function (h, i) { o[h] = r[i]; });
-    if (!o.item_id || o.visible_on === 'none') return false;
-    if (wantRole && o.role !== wantRole) return false;
-    if (allowed && !allowed[o.role]) return false;
-    return !o.active_to || String(o.active_to) >= today;
-  }).map(function (r) {
-    var o = {};
-    it.header.forEach(function (h, i) { o[h] = r[i]; });
+    if (!o.item_id || o.visible_on === 'none') return;
+    if (wantRole && o.role !== wantRole) return;
+    if (allowed && !allowed[o.role]) return;
+    if (!itemActiveOn_(o, today)) return;
     o.options = opts[o.item_id] || [];
     o.labels = String(o.labels || '').split(';').filter(String);
-    return o;
+    o._idx = idx;
+    items.push(o);
   });
+
+  /* Порядок — маршрут обходу (group_seq), усередині групи — seq. Пункти без
+     group_seq (майстер, старі рядки) ідуть як записані в таблиці, після тих,
+     що мають порядок. Так довідник, а не код, вирішує, що механік бачить першим. */
+  items.sort(function (a, b) {
+    var ga = a.group_seq === '' || a.group_seq === undefined ? 1e6 : Number(a.group_seq);
+    var gb = b.group_seq === '' || b.group_seq === undefined ? 1e6 : Number(b.group_seq);
+    if (ga !== gb) return ga - gb;
+    if (ga === 1e6) return a._idx - b._idx;
+    var sa = Number(a.seq) || 0, sb = Number(b.seq) || 0;
+    return sa !== sb ? sa - sb : a._idx - b._idx;
+  });
+  items.forEach(function (o) { delete o._idx; });
 
   var staff = em.rows.filter(function (r) { return r[0] && String(r[3]).trim() !== 'ні'; })
     .map(function (r) { return { user_id: r[0], name: r[1], role: r[2] }; });
 
-  return {
+  var cfg = {
     version: APP_VERSION,
+    config_version: checklistVersion_(wantRole || 'Механік', it, today),
     items: items,
     employees: staff,
     can: who ? { mech: can_(who, 'submitMech'), master: can_(who, 'submitMaster') } : null
   };
+  if (wantRole !== 'Майстер') {
+    cfg.handover_item = HANDOVER_SHOW;
+    cfg.handover = lastHandover_();
+  }
+  return cfg;
+}
+
+/** Пункт чинний сьогодні: active_from уже настав (або порожній), active_to ще не минув. */
+function itemActiveOn_(o, day) {
+  if (o.active_from && String(o.active_from) > day) return false;
+  return !o.active_to || String(o.active_to) >= day;
+}
+
+/**
+ * Версія чек-листа — з довідника, а не з константи: v4 «вмикається» в день,
+ * коли пункт 0-1 стає чинним, і в звітах одразу видно, за яким листом їх здано.
+ * (Не configVersion_ — така функція вже є в Migrate.gs, а область видимості
+ * в Apps Script одна на всі файли.)
+ */
+function checklistVersion_(role, it, day) {
+  if (role === 'Майстер') return 'master-v1';
+  var v4 = it.rows.some(function (r) {
+    var o = {};
+    it.header.forEach(function (h, i) { o[h] = r[i]; });
+    return o.item_id === 'mech.0-1' && itemActiveOn_(o, day);
+  });
+  return v4 ? 'mech-v4' : 'mech-v3';
+}
+
+/**
+ * Останній запис передачі зміни (10-7) — щоб наступний механік читав його
+ * прямо в застосунку під пунктом 0-2, а не в таблиці, до якої не має доступу.
+ * Шукаємо серед останніх рядків 12_Відповіді: передача пишеться в кінці зміни,
+ * тож вона завжди близько до кінця аркуша.
+ */
+function lastHandover_() {
+  try {
+    var t = tailRows_(SH.ANSWERS, 400);
+    var cItem = t.col.item_id, cVal = t.col.value_text, cDay = t.col.business_date,
+        cUser = t.col.user_id, cRep = t.col.report_id;
+    if (cItem === undefined) return null;
+    for (var i = t.rows.length - 1; i >= 0; i--) {
+      var r = t.rows[i];
+      if (String(r[cItem]) !== HANDOVER_SOURCE) continue;
+      var name = '';
+      try {
+        var em = readTable(SH.EMPLOYEES);
+        em.rows.forEach(function (e) { if (e[0] === r[cUser]) name = e[1]; });
+      } catch (e) {}
+      return { text: String(r[cVal] || '').trim(), date: String(r[cDay] || ''),
+               name: name, report_id: String(r[cRep] || '') };
+    }
+    return null;
+  } catch (err) {
+    logEvent('Техніка', 'handover.failed', String(err), {});
+    return null;
+  }
 }
