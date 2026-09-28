@@ -27,6 +27,7 @@ const PEOPLE = [
 ];
 const received = [];
 let blockCors = false;
+let oldPost = false;                // імітація розгортання без getConfig у doPost
 let fired = {};                     // emp_id → звільнений посеред сесії
 
 const tokenFor = (p, dev) => 'T.' + p.id + '.' + (dev || '');
@@ -72,6 +73,18 @@ const srv = http.createServer((req, res) => {
     fired[req.url.split('/')[2]] = true;
     res.writeHead(200, cors); return res.end('ok');
   }
+  // Старе розгортання: doPost не знає getConfig, doGet — знає (конфіг без requires і підказок)
+  if (req.method === 'GET' && req.url.startsWith('/oldpost')) {
+    oldPost = req.url.indexOf('off') === -1;
+    res.writeHead(200, cors); return res.end(oldPost ? 'old doPost' : 'new doPost');
+  }
+  if (req.method === 'GET' && req.url.startsWith('/exec?action=getConfig')) {
+    const cfg = JSON.parse(fs.readFileSync(__dirname + '/config_fixture.json', 'utf8'));
+    delete cfg.config_version; delete cfg.handover; delete cfg.handover_item;
+    cfg.items.forEach(i => { delete i.hint; delete i.group_seq; i.options.forEach(o => delete o.requires); });
+    res.writeHead(200, Object.assign({ 'Content-Type': 'application/json' }, cors));
+    return res.end(JSON.stringify({ ok: true, config: cfg }));
+  }
   if (req.method === 'GET' && req.url.startsWith('/received')) {
     res.writeHead(200, Object.assign({ 'Content-Type': 'application/json' }, cors));
     return res.end(JSON.stringify(received));
@@ -94,6 +107,7 @@ const srv = http.createServer((req, res) => {
       return json({ ok: true, token: tokenFor(hits[0], p.deviceId),
                     expires_at: Date.now() + 12 * 3600 * 1000, user: pub(hits[0]) });
     }
+    if (act === 'getConfig' && oldPost) return json({ ok: false, error: 'unknown action: getConfig' });
     if (act === 'getConfig') {
       // те саме, що віддає buildClientConfig_ після seedV4() — збирається gen_config_fixture.js
       const cfg = JSON.parse(fs.readFileSync(__dirname + '/config_fixture.json', 'utf8'));

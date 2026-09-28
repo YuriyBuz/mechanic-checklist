@@ -200,6 +200,17 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   t('називає справжню причину', /Хто має доступ|не «Усі»|сторінку/.test(msg));
   await fetch(BASE + '/blockcors?off');
 
+  console.log('\n── сторінку оновили раніше за сервер: doPost без getConfig ──');
+  await fetch(BASE + '/reset'); await fetch(BASE + '/oldpost');
+  await page.evaluate(() => { localStorage.removeItem('checklistConfigV4'); dropSession(); requireLogin(); });
+  await page.waitForTimeout(300);
+  await page.fill('#authPin', '2468'); await page.click('#authLoginBtn'); await page.waitForTimeout(1500);
+  await closeDlg();
+  t('чек-лист узято через doGet, механік не лишився без списку',
+    (await page.locator('#startShiftSection .checklist-item').count()) > 0 &&
+    (await page.locator('#noConfigNote').count()) === 0);
+  await fetch(BASE + '/oldpost?off');
+
   console.log('\n── сервер відмовив: сесія протухла ──');
   await fetch(BASE + '/reset');
   // попередній сценарій лишив нас без сесії — входимо заново

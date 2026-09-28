@@ -804,6 +804,18 @@
                 let res = null;
                 try { res = await api({ action: 'getConfig', role: 'Механік', token: sessionToken() }); }
                 catch (e) { return false; }                 // зв'язку немає — лишаємося на кеші
+                /* Розгортання, у якому doPost ще не знає getConfig, відповідає «unknown action».
+                   Його doGet конфіг віддає давно — беремо звідти, щоб порядок оновлення
+                   (спершу сторінка чи спершу сервер) не лишав механіка без чек-листа. */
+                if (res && !res.ok && /unknown action/.test(String(res.error || ''))) {
+                    try {
+                        const q = '?action=getConfig&role=' + encodeURIComponent('Механік') +
+                                  '&token=' + encodeURIComponent(sessionToken()) +
+                                  '&device=' + encodeURIComponent(getDeviceId());
+                        const r = await fetch(GOOGLE_SCRIPT_URL + q, { redirect: 'follow' });
+                        res = r.ok ? await r.json() : null;
+                    } catch (e) { res = null; }
+                }
                 if (!res || !res.ok || !res.config) return false;
                 const cached = JSON.stringify(loadCachedConfig());
                 const fresh = JSON.stringify(res.config);
