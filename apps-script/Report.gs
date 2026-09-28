@@ -100,16 +100,12 @@ function auditRecipients() {
   out.push('MAIL_ALERT_TO (' + (recipients_('MAIL_ALERT_TO').join(', ') || 'не задано') +
            ') — ручне переважання для листів контролю.');
   out.push('');
-  out.push('Щоденний контроль (checkSchedule): якщо MAIL_ALERT_TO порожній — іде тим, хто ' +
-           'отримує звіти ролі, у якої дірка (пропуск механіка — списком механіка, ' +
-           'пропуск майстра — списком майстра).');
-  out.push('Тижневий дайджест (weeklyDigest): MAIL_ALERT_TO, а якщо порожній — MAIL_TO. ' +
-           'За ролями він НЕ розсилається.');
-  if (!recipients_('MAIL_ALERT_TO').length && !recipients_('MAIL_TO').length) {
-    out.push('');
-    out.push('⚠️ MAIL_ALERT_TO і MAIL_TO обидва порожні — тижневий дайджест зараз ' +
-             'не йде нікому і мовчить про це.');
-  }
+  out.push('');
+  out.push('Обидва листи контролю йдуть тими самими списками, поки MAIL_ALERT_TO порожній:');
+  out.push('  щоденна перевірка (checkSchedule) — списком тієї ролі, у якої дірка;');
+  out.push('  тижневий дайджест (weeklyDigest) — окремий лист на кожну роль зі своїми ' +
+           'відхиленнями.');
+  out.push('Заповнений MAIL_ALERT_TO переважає: тоді обидва листи йдуть туди.');
 
   var msg = out.join('\n');
   Logger.log(msg);
@@ -319,31 +315,9 @@ function checkSchedule() {
  * Тижневий дайджест: що повторюється. Повісити тригер на понеділок.
  * Саме він мав би ще в березні показати, що UF-знезараження не працює 55 разів.
  */
-function weeklyDigest() {
-  var since = new Date();
-  since.setDate(since.getDate() - 7);
-  var from = businessDate(since);
-
-  var ans = readTable(SH.ANSWERS);
-  var byItem = {};
-  ans.rows.forEach(function (r) {
-    if (String(r[ans.col.business_date]) < from) return;
-    var st = r[ans.col.status];
-    if (st !== 'alert' && st !== 'warn') return;
-    var k = r[ans.col.item_text_snapshot] || r[ans.col.item_id];
-    byItem[k] = byItem[k] || { alert: 0, warn: 0 };
-    byItem[k][st]++;
-  });
-
-  var list = Object.keys(byItem).map(function (k) {
-    return { text: k, a: byItem[k].alert, w: byItem[k].warn };
-  }).sort(function (x, y) { return (y.a * 10 + y.w) - (x.a * 10 + x.w); });
-
-  var to = recipients_('MAIL_ALERT_TO').length ? recipients_('MAIL_ALERT_TO') : recipients_('MAIL_TO');
-  if (!to.length) return 'MAIL_TO не заданий';
-
+function digestHtml_(role, from, list) {
   var html = '<div style="font-family:sans-serif;font-size:14px">' +
-             '<h3>Відхилення за тиждень (з ' + esc_(from) + ')</h3>';
+             '<h3>Відхилення за тиждень (' + esc_(role) + ', з ' + esc_(from) + ')</h3>';
   if (!list.length) {
     html += '<p>Відхилень немає.</p>';
   } else {
@@ -357,10 +331,53 @@ function weeklyDigest() {
     });
     html += '</table><p style="color:#64748b;font-size:12px">колонки: відхилень · попереджень</p>';
   }
-  html += '</div>';
-  MailApp.sendEmail({ to: to.join(','), subject: '📊 Чек-лист: відхилення за тиждень', htmlBody: html });
-  logEvent('Контроль', 'weeklyDigest', 'позицій у дайджесті: ' + list.length);
-  return 'відправлено, позицій: ' + list.length;
+  return html + '</div>';
+}
+
+function weeklyDigest() {
+  var since = new Date();
+  since.setDate(since.getDate() - 7);
+  var from = businessDate(since);
+
+  /* Дайджест був один на всіх і йшов на список, ведений руками: якщо
+     MAIL_ALERT_TO і MAIL_TO обидва порожні, він мовчки не йшов нікуди.
+     Тепер він ділиться за роллю — як звіти й щоденний контроль: механікам
+     свої відхилення, майстрам свої, адреси з кадрової.
+     MAIL_ALERT_TO лишається ручним переважанням. */
+  var ans = readTable(SH.ANSWERS);
+  var byRole = {};
+  ans.rows.forEach(function (r) {
+    if (String(r[ans.col.business_date]) < from) return;
+    var st = r[ans.col.status];
+    if (st !== 'alert' && st !== 'warn') return;
+    var role = r[ans.col.role] || 'Механік';
+    var k = r[ans.col.item_text_snapshot] || r[ans.col.item_id];
+    var items = byRole[role] = byRole[role] || {};
+    items[k] = items[k] || { alert: 0, warn: 0 };
+    items[k][st]++;
+  });
+
+  var override = recipients_('MAIL_ALERT_TO');
+  var done = [], silent = [];
+  ['Механік', 'Майстер'].forEach(function (role) {
+    var to = override.length ? override : recipientsFor_(role);
+    if (!to.length) { silent.push(role); return; }
+
+    var items = byRole[role] || {};
+    var list = Object.keys(items).map(function (k) {
+      return { text: k, a: items[k].alert, w: items[k].warn };
+    }).sort(function (x, y) { return (y.a * 10 + y.w) - (x.a * 10 + x.w); });
+
+    MailApp.sendEmail({ to: to.join(','),
+      subject: '📊 Чек-лист (' + role + '): відхилення за тиждень',
+      htmlBody: digestHtml_(role, from, list) });
+    done.push(role + ' — ' + list.length);
+  });
+
+  var msg = 'відправлено: ' + (done.join('; ') || '—') +
+            (silent.length ? '; нікому надсилати: ' + silent.join(', ') : '');
+  logEvent('Контроль', 'weeklyDigest', msg);
+  return msg;
 }
 
 /** Разова установка тригерів. Повторний запуск не дублює. */

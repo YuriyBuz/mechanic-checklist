@@ -237,16 +237,45 @@ t('  і попереджає про застарілі властивості', 
   delete store.props['MAIL_TO_MASTER'];
   return a2.indexOf('більше не використовується') > -1;
 })());
-t('  і каже, коли дайджестові нікуди йти', (() => {
-  // якщо очистити MAIL_ALERT_TO і MAIL_TO, тижневий дайджест мовчки зникає:
-  // за ролями він, на відміну від щоденного контролю, не розсилається
-  const keep = store.props['MAIL_TO'];
-  store.props['MAIL_TO'] = '';
-  const a3 = auditRecipients();
-  const digest = weeklyDigest();
-  store.props['MAIL_TO'] = keep;
-  return a3.indexOf('не йде нікому') > -1 && digest.indexOf('не заданий') > -1;
-})());
+t('  і описує обидва листи контролю', ar.indexOf('checkSchedule') > -1 &&
+  ar.indexOf('weeklyDigest') > -1 && ar.indexOf('MAIL_ALERT_TO') > -1);
+
+console.log('\n── тижневий дайджест ──');
+// Раніше дайджест був один на всіх і йшов на список, ведений руками: із порожніми
+// MAIL_ALERT_TO та MAIL_TO він мовчки не йшов нікуди.
+const ansRow = (role, text, status) => {
+  const r = Array(17).fill('');
+  r[2] = businessDate(); r[3] = 'Початок зміни'; r[4] = role;
+  r[7] = text; r[13] = status; return r;
+};
+appendRows(SH.ANSWERS, [
+  ansRow('Механік', 'Закрити заслінки вентиляції.', 'alert'),
+  ansRow('Механік', 'Закрити заслінки вентиляції.', 'alert'),
+  ansRow('Механік', 'Температура компресорів', 'warn'),
+  ansRow('Майстер', 'Стан цеху', 'alert')
+]);
+const keepAlert = store.props['MAIL_ALERT_TO'], keepTo = store.props['MAIL_TO'];
+store.props['MAIL_ALERT_TO'] = ''; store.props['MAIL_TO'] = '';
+store.mail.length = 0;
+const dg = weeklyDigest();
+const dgMech = store.mail.find(m => m.subject.indexOf('Механік') > -1);
+const dgMast = store.mail.find(m => m.subject.indexOf('Майстер') > -1);
+t('без жодної властивості дайджест усе одно йде', store.mail.length === 2);
+t('  механікам — своїм списком', dgMech && dgMech.to.indexOf('evgeniy.galagin@gmail.com') > -1 &&
+  dgMech.to.indexOf('sashaalieva18@gmail.com') === -1);
+t('  майстрам — своїм', dgMast && dgMast.to.indexOf('sashaalieva18@gmail.com') > -1 &&
+  dgMast.to.indexOf('evgeniy.galagin@gmail.com') === -1);
+t('  і кожен бачить лише свої відхилення',
+  dgMech.htmlBody.indexOf('заслінки') > -1 && dgMech.htmlBody.indexOf('Стан цеху') === -1 &&
+  dgMast.htmlBody.indexOf('Стан цеху') > -1 && dgMast.htmlBody.indexOf('заслінки') === -1);
+t('  повтори пораховано', /заслінки[\s\S]*?<b>2<\/b>/.test(dgMech.htmlBody));
+store.props['MAIL_ALERT_TO'] = 'shef@example.com';
+store.mail.length = 0;
+weeklyDigest();
+t('MAIL_ALERT_TO переважає', store.mail.length === 2 &&
+  store.mail.every(m => m.to === 'shef@example.com'));
+store.props['MAIL_ALERT_TO'] = keepAlert || ''; store.props['MAIL_TO'] = keepTo || '';
+console.log('   ' + dg);
 
 console.log('\n── кадрова таблиця недоступна ──');
 // саме те, що сталося насправді: акаунт розгортання втратив доступ до довідника
