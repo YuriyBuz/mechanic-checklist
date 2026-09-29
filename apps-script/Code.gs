@@ -21,7 +21,7 @@
 
 // Версія бекенду. Її віддає ?action=ping і вона лягає в кожен звіт —
 // саме за нею видно, чи розгортання справді підхопило новий код.
-var APP_VERSION = 'checklist-2026-08-25-auth';
+var APP_VERSION = 'checklist-2026-09-29-v4';
 
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) || 'getConfig';
