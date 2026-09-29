@@ -511,3 +511,9 @@ function seedV4(launchDate) {
     return msg;
   }, 60000);
 }
+
+/** Те саме, що seedV4(businessDate()): увімкнути v4 вже сьогодні. Кнопка «Виконати»
+ *  в редакторі не вміє передавати аргументи — тому окрема функція. */
+function seedV4Now() {
+  return seedV4(businessDate());
+}
