@@ -121,11 +121,35 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   t('чек-лист після перезавантаження — з кешу, той самий',
     (await page.locator('#startShiftSection .checklist-item').count()) === 54);
 
-  console.log('\n── відправка ──');
+  console.log('\n── фото після перезавантаження — заново ──');
   for (const id of needPhoto) {
     await page.setInputFiles(`#start-${id} .photo-input`, { name: 'p.jpg', mimeType: 'image/jpeg', buffer: JPEG });
     await page.waitForTimeout(250);
   }
+
+  console.log('\n── кілька фото на один пункт ──');
+  const thumbs714 = () => page.locator('#start-7-14 .photo-thumbs .photo-thumbnail').count();
+  t('7-14 має одне фото', (await thumbs714()) === 1);
+  await page.setInputFiles('#start-7-14 .photo-input', { name: 'p2.jpg', mimeType: 'image/jpeg', buffer: JPEG });
+  await page.waitForTimeout(250);
+  t('друге фото стало поруч, а не замість першого', (await thumbs714()) === 2);
+  await page.setInputFiles('#start-7-14 .photo-input', { name: 'p3.jpg', mimeType: 'image/jpeg', buffer: JPEG });
+  await page.waitForTimeout(250);
+  t('третє — теж', (await thumbs714()) === 3);
+  await page.setInputFiles('#start-7-14 .photo-input', { name: 'p4.jpg', mimeType: 'image/jpeg', buffer: JPEG });
+  await page.waitForTimeout(250);
+  t('четверте не приймається: попередження «не більше 3 фото»',
+    (await dlgOpen()) && (await dlgText()).includes('не більше 3 фото') && (await thumbs714()) === 3);
+  await closeDlg();
+  await page.locator('#start-7-14 .photo-remove').nth(2).click(); await page.waitForTimeout(150);
+  t('хрестик прибирає одне фото, лишається два', (await thumbs714()) === 2 &&
+    (await page.locator('#start-7-14 .photo-btn').evaluate(e => e.classList.contains('has-photo'))));
+  await page.click('#mainSubmitBtn'); await page.waitForTimeout(400);
+  t('прев\'ю показує «📷×2» біля 7-14', (await page.locator('#previewContent').textContent()).includes('📷×2'));
+  await page.click('#closeModalBtn'); await page.waitForTimeout(200);
+  t('індикатор обробки згас', !(await page.locator('#currentStatus').textContent()).includes('Обробка'));
+
+  console.log('\n── відправка ──');
   await page.click('#mainSubmitBtn'); await page.waitForTimeout(400);
   t('прев\'ю каже, що все заповнено', (await page.locator('#modalMessage').textContent()).includes('коректно'));
   await page.click('#submitReportBtn'); await page.waitForTimeout(1800);
@@ -151,8 +175,10 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   t('версія чек-листа у звіті — з сервера', p.config_version === 'mech-v4');
   t('5-6 надіслав три числа за позиціями',
     JSON.stringify(p.items.find(i => i.item_id === 'mech.5-6').values) === '["20","21","22"]');
-  t('7-14 надіслав два числа і фото', (() => { const x = p.items.find(i => i.item_id === 'mech.7-14');
-    return JSON.stringify(x.values) === '["20","21"]' && !!x.photoData; })());
+  t('7-14 надіслав два числа і два фото (photos), photoData = перше з них', (() => {
+    const x = p.items.find(i => i.item_id === 'mech.7-14');
+    return JSON.stringify(x.values) === '["20","21"]' && Array.isArray(x.photos) && x.photos.length === 2 &&
+      x.photos.every(d => /^data:image\/jpeg;base64,/.test(d)) && x.photoData === x.photos[0]; })());
   t('1-1 надіслав два числа',
     JSON.stringify(p.items.find(i => i.item_id === 'mech.1-1').values) === '["20","21"]');
   const i34 = p.items.find(i => i.item_id === 'mech.3-4');
@@ -164,7 +190,10 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   t('0-1 «Отримав» із фото бланка', (() => { const x = p.items.find(i => i.item_id === 'mech.0-1');
     return x.value === 'Отримав' && !!x.photoData; })());
   t('коментар до 1-2 поїхав', p.items.find(i => i.item_id === 'mech.1-2').comment === 'E12 на пульті №2');
-  t('фото додані', p.items.filter(i => i.photoData).length === needPhoto.length);
+  t('фото додані', p.items.filter(i => i.photoData).length === needPhoto.length &&
+    p.items.reduce((n, i) => n + (i.photos || []).length, 0) === needPhoto.length + 1);
+  t('пункти без фото шлють порожній масив і photoData: null',
+    p.items.filter(i => !i.photoData).every(i => Array.isArray(i.photos) && !i.photos.length && i.photoData === null));
 
   console.log('\n── кінець зміни: вимога залежить від відповіді, передача зміни ──');
   await page.click('#endShiftBtn'); await page.waitForTimeout(400);

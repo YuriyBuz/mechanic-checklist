@@ -210,12 +210,17 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
     (await page.locator('#startShiftSection .checklist-item').count()) > 0 &&
     (await page.locator('#noConfigNote').count()) === 0);
   await fetch(BASE + '/oldpost?off');
+  // сервер оновили — застосунок підтягує повний конфіг (з requires), форма перемальовується
+  await page.evaluate(() => refreshConfig()); await page.waitForTimeout(500);
+  t('після оновлення сервера конфіг знову повний', await page.evaluate(() =>
+    checklistConfig.flatMap(g => g.items).some(i => Object.values(i.meta).some(m => m.requires))));
 
   console.log('\n── сервер відмовив: сесія протухла ──');
   await fetch(BASE + '/reset');
-  // попередній сценарій лишив нас без сесії — входимо заново
-  await page.fill('#authPin', '2468'); await page.click('#authLoginBtn');
-  await page.waitForTimeout(1200); await closeDlg();
+  // сесія з попереднього сценарію жива (вхід через старий сервер удався);
+  // якщо ж застосунок просить PIN — входимо заново
+  if (await shown()) { await page.fill('#authPin', '2468'); await page.click('#authLoginBtn');
+    await page.waitForTimeout(1200); await closeDlg(); }
   await fill();
   await page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem('checklistSessionV1'));

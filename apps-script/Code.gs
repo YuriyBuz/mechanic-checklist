@@ -21,7 +21,7 @@
 
 // Версія бекенду. Її віддає ?action=ping і вона лягає в кожен звіт —
 // саме за нею видно, чи розгортання справді підхопило новий код.
-var APP_VERSION = 'checklist-2026-09-29-v4';
+var APP_VERSION = 'checklist-2026-09-30-v4.1';
 
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) || 'getConfig';
@@ -378,9 +378,19 @@ function resolveUser_(dict, userId, userName) {
  * недоступна, ми одразу знаємо про це і повідомляємо, а не пишемо 134 рядки
  * «Помилка фото» всередину звіту, як робив старий скрипт.
  */
+/* Фото пункту: новий клієнт шле масив photos, старий (і звіти з його черги) —
+   один рядок photoData. Більше трьох не беремо: лист із 12 фото на добу і так
+   важкий, а в Gmail межа 25 МБ на лист. */
+var MAX_PHOTOS_PER_ITEM = 3;
+function itemPhotos_(it) {
+  var list = Array.isArray(it.photos) ? it.photos.slice() : [];
+  if (!list.length && it.photoData) list = [it.photoData];
+  return list.filter(function (x) { return typeof x === 'string' && x; }).slice(0, MAX_PHOTOS_PER_ITEM);
+}
+
 function savePhotos_(p, answers, dict) {
   var out = { rows: [], saved: 0, failed: 0, blobs: {}, urls: {} };
-  var items = (p.items || []).filter(function (it) { return it.photoData; });
+  var items = (p.items || []).filter(function (it) { return itemPhotos_(it).length; });
   if (!items.length) return out;
 
   var folderId = PropertiesService.getScriptProperties().getProperty('PHOTO_FOLDER_ID');
@@ -392,32 +402,37 @@ function savePhotos_(p, answers, dict) {
     folderError = String(err);
   }
 
-  items.forEach(function (it, k) {
-    var pid = p.report_id + '#p' + (k + 1);
-    if (!folder) {
-      out.rows.push([pid, p.report_id, it.item_id, '', '', 'failed', folderError]);
-      out.failed++;
-      return;
-    }
-    try {
-      var b64 = it.photoData.indexOf('base64,') > -1 ? it.photoData.split('base64,')[1] : it.photoData;
-      var name = [businessDate(), p.stage === 'Кінець зміни' ? 'end' : 'start',
-                  it.item_id, p.report_id].join('_') + '.jpg';
-      var bytes = Utilities.base64Decode(b64);
-      var file = folder.createFile(Utilities.newBlob(bytes, MimeType.JPEG, name));
-      var url = file.getUrl();
-      out.blobs[it.item_id] = Utilities.newBlob(bytes, MimeType.JPEG, name);
-      out.urls[it.item_id] = url;
-      out.rows.push([pid, p.report_id, it.item_id, url, file.getId(), 'saved', '']);
-      out.saved++;
-      for (var a = 0; a < answers.length; a++) {
-        if (answers[a][6] === it.item_id) { answers[a][16] = url; break; }
+  var n = 0;
+  items.forEach(function (it) {
+    var photos = itemPhotos_(it);
+    photos.forEach(function (data, j) {
+      var pid = p.report_id + '#p' + (++n);
+      if (!folder) {
+        out.rows.push([pid, p.report_id, it.item_id, '', '', 'failed', folderError]);
+        out.failed++;
+        return;
       }
-    } catch (err) {
-      out.rows.push([pid, p.report_id, it.item_id, '', '', 'failed', String(err)]);
-      out.failed++;
-      logEvent('Техніка', 'photo.failed', String(err), { report_id: p.report_id });
-    }
+      try {
+        var b64 = data.indexOf('base64,') > -1 ? data.split('base64,')[1] : data;
+        var name = [businessDate(), p.stage === 'Кінець зміни' ? 'end' : 'start',
+                    it.item_id, p.report_id].join('_') + (photos.length > 1 ? '_' + (j + 1) : '') + '.jpg';
+        var bytes = Utilities.base64Decode(b64);
+        var file = folder.createFile(Utilities.newBlob(bytes, MimeType.JPEG, name));
+        var url = file.getUrl();
+        (out.blobs[it.item_id] = out.blobs[it.item_id] || []).push(Utilities.newBlob(bytes, MimeType.JPEG, name));
+        (out.urls[it.item_id] = out.urls[it.item_id] || []).push(url);
+        out.rows.push([pid, p.report_id, it.item_id, url, file.getId(), 'saved', '']);
+        out.saved++;
+        // у відповіді — всі посилання пункту через пробіл
+        for (var a = 0; a < answers.length; a++) {
+          if (answers[a][6] === it.item_id) { answers[a][16] = out.urls[it.item_id].join(' '); break; }
+        }
+      } catch (err) {
+        out.rows.push([pid, p.report_id, it.item_id, '', '', 'failed', String(err)]);
+        out.failed++;
+        logEvent('Техніка', 'photo.failed', String(err), { report_id: p.report_id });
+      }
+    });
   });
   return out;
 }

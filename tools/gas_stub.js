@@ -59,7 +59,13 @@ global.Utilities = {
   computeHmacSha256Signature: (s, k) => bytes(crypto.createHmac('sha256', String(k)).update(String(s), 'utf8').digest()),
   base64EncodeWebSafe: s => Buffer.from(String(s), 'utf8').toString('base64url'),
   base64DecodeWebSafe: s => bytes(Buffer.from(String(s), 'base64url')),
-  newBlob: b => ({ getDataAsString: () => Buffer.from(b.map(x => x < 0 ? x + 256 : x)).toString('utf8') }),
+  base64Decode: s => bytes(Buffer.from(String(s), 'base64')),
+  newBlob: (b, mime, name) => {
+    const blob = { _name: name || '', getDataAsString: () => Buffer.from(b.map(x => x < 0 ? x + 256 : x)).toString('utf8'),
+      getBytes: () => b, getName: () => blob._name, setName(n) { blob._name = n; return blob; },
+      copyBlob: () => Utilities.newBlob(b, mime, blob._name) };
+    return blob;
+  },
   getUuid: () => crypto.randomUUID(),
   sleep: () => {},                                  // у тестах не гальмуємо
   // Формат раніше ігнорувався, і businessDate() з localTime() віддавали
@@ -87,6 +93,12 @@ global.Session = { getEffectiveUser: () => ({ getEmail: () => 'stub@example.com'
 global.MailApp = { sendEmail: o => { store.mail.push(o); store.log.push('MAIL → ' + o.to); } };
 global.ContentService = { MimeType: { JSON: 'json' },
   createTextOutput: t => ({ setMimeType: () => t }) };
-global.DriveApp = { getFolderById: () => { throw new Error('no drive in stub'); } };
+// Папка «stub-folder» приймає файли; будь-яка інша — як у житті без доступу
+store.files = [];
+global.DriveApp = { getFolderById: id => {
+  if (id !== 'stub-folder') throw new Error('no drive in stub');
+  return { createFile: blob => { const n = store.files.push(blob);
+    return { getId: () => 'F' + n, getUrl: () => 'https://drive.google.com/file/d/F' + n }; } };
+} };
 global.MimeType = { JPEG: 'image/jpeg' };
 module.exports = { store, Sheet, SS };

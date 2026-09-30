@@ -109,6 +109,12 @@
             display: none;
         }
         .photo-thumbnail.show { display: block; }
+        .photo-thumb-wrap { position: relative; display: inline-block; }
+        .photo-remove {
+            position: absolute; top: -6px; right: -6px; width: 18px; height: 18px;
+            border-radius: 50%; border: none; padding: 0; background: #ef4444; color: #fff;
+            font-size: 13px; line-height: 18px; text-align: center; cursor: pointer;
+        }
         
         /* Comment Button Active Style */
         .comment-btn.has-comment {
@@ -396,7 +402,7 @@
            і саме воно потрапляє у звіт. Підмінити автора неможливо —
            сервер бере ім'я з підтвердженої сесії, а не з запиту.          */
 
-        const APP_VERSION    = 'checklist-client-2026-09-28-v4';
+        const APP_VERSION    = 'checklist-client-2026-09-30-v4.1';
         const CONFIG_VERSION = 'client-no-config';   // лише доки сервер не віддав свою версію
         const SESSION_KEY    = 'checklistSessionV1';
         const DEVICE_KEY     = 'checklistDeviceIdV1';
@@ -747,7 +753,8 @@
             const completionModal = document.getElementById('completionModal');
             
             let currentSection = 'start';
-            let currentPhotos = {}; 
+            let currentPhotos = {};           // id пункту → масив фото (dataURL), до MAX_PHOTOS_PER_ITEM
+            const MAX_PHOTOS_PER_ITEM = 3;    // ті самі три, що приймає сервер
             let appState = {};
             let photoBusy = 0;
             const STORAGE_KEY = 'shiftChecklistState_v3';
@@ -821,7 +828,11 @@
                 const fresh = JSON.stringify(res.config);
                 try { localStorage.setItem(CONFIG_KEY, fresh); } catch (e) {}
                 if (fresh === cached) { adoptConfig(res.config); return true; }
-                // чек-лист змінився — перемальовуємо; відповіді відновляться зі сховища
+                // чек-лист змінився — перемальовуємо. Спершу зберігаємо те, що набрано
+                // з моменту завантаження сторінки, і перечитуємо, бо restoreDOMState бере
+                // знімок у пам'яті: інакше після повторного входу відповіді зникли б.
+                saveState();
+                loadState();
                 adoptConfig(res.config);
                 if (currentSection === 'start' || currentSection === 'end') switchView(currentSection);
                 return true;
@@ -851,7 +862,7 @@
                                                                         : { photo: !!(cfg && cfg.photoRequired), comment: false };
                 const parts = [];
                 if (need.comment && !item.querySelector('.comment-text').textContent.trim()) parts.push('Потрібен коментар: що саме і де.');
-                if (need.photo && !currentPhotos[item.id]) parts.push('Потрібне фото.');
+                if (need.photo && !photosOf(item.id).length) parts.push('Потрібне фото.');
                 note.textContent = parts.join(' ');
                 note.classList.toggle('hidden', !parts.length);
             };
@@ -923,7 +934,8 @@
                             value: v.value,
                             values: v.values,
                             comment: el.querySelector('.comment-text').textContent.trim(),
-                            photoData: currentPhotos[el.id] || null
+                            photos: photosOf(el.id),
+                            photoData: photosOf(el.id)[0] || null   // старе поле — для сервера, що ще не знає photos
                         };
                     })
                 };
@@ -1098,7 +1110,7 @@
                                 ${controlsHtml}
                                 <div class="flex items-center gap-2 mt-1">
                                     <div class="print-value text-emerald-600"></div>
-                                    <img src="" class="photo-thumbnail hidden">
+                                    <div class="photo-thumbs flex items-center gap-2"></div>
                                 </div>
                                 <div class="comment-text mt-1 hidden w-full text-sm text-gray-500 italic"></div>
                                 <div class="need-note mt-1 hidden text-sm text-red-600 font-medium"></div>
@@ -1135,11 +1147,36 @@
                 document.getElementById('mainSubmitBtn').addEventListener('click', () => showCompletionModal(currentSection));
             };
 
+            const photosOf = (id) => currentPhotos[id] || [];
+
+            /* Мініатюри пункту: кожна з хрестиком, щоб прибрати зайву. Кнопка «фото»
+               лишається та сама — друге фото стає поруч, а не замість першого. */
+            const renderThumbs = (item) => {
+                const box = item.querySelector('.photo-thumbs');
+                if (!box) return;
+                const list = photosOf(item.id);
+                box.innerHTML = list.map((src, i) =>
+                    `<span class="photo-thumb-wrap"><img src="${src}" class="photo-thumbnail show">` +
+                    `<button type="button" class="photo-remove" data-idx="${i}" title="Прибрати фото">×</button></span>`).join('');
+                box.querySelectorAll('.photo-remove').forEach(btn => btn.addEventListener('click', () => {
+                    list.splice(Number(btn.dataset.idx), 1);
+                    if (list.length) currentPhotos[item.id] = list; else delete currentPhotos[item.id];
+                    renderThumbs(item);
+                    refreshNeedNote(item);
+                }));
+                item.querySelector('.photo-btn').classList.toggle('has-photo', list.length > 0);
+            };
+
             const handlePhotoUpload = (input, item, uniqueId) => {
                 if (!employeeSelect.value) { 
                     customAlert("Спочатку оберіть механіка зі списку зверху!"); 
                     input.value = ''; 
                     return; 
+                }
+                if (photosOf(uniqueId).length >= MAX_PHOTOS_PER_ITEM) {
+                    customAlert(`До одного пункту — не більше ${MAX_PHOTOS_PER_ITEM} фото. Приберіть зайве хрестиком і додайте нове.`);
+                    input.value = '';
+                    return;
                 }
                 
                 if (input.files && input.files[0]) {
@@ -1167,13 +1204,9 @@
                             canvas.height = height;
                             ctx.drawImage(img, 0, 0, width, height);
                             const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                            currentPhotos[uniqueId] = dataUrl;
-                            
-                            const thumb = item.querySelector('.photo-thumbnail');
-                            thumb.src = dataUrl;
-                            thumb.classList.remove('hidden');
-                            thumb.classList.add('show');
-                            item.querySelector('.photo-btn').classList.add('has-photo');
+                            (currentPhotos[uniqueId] = currentPhotos[uniqueId] || []).push(dataUrl);
+                            input.value = '';            // щоб той самий файл можна було вибрати ще раз
+                            renderThumbs(item);
                             refreshNeedNote(item);
                             item.classList.remove('error-highlight');
                             setPhotoBusy(-1);
@@ -1389,6 +1422,7 @@
                             cEl.classList.remove('hidden');
                             el.querySelector('.comment-btn').classList.add('has-comment');
                         }
+                        if (photosOf(id).length) renderThumbs(el);   // фото живуть у пам'яті — після перемальовки показати знову
                     }
                 });
                 updateProgress();
@@ -1415,8 +1449,8 @@
                     item.querySelector('.print-value').textContent = '';
                     item.querySelector('.comment-btn').classList.remove('has-comment');
                     
-                    const thumb = item.querySelector('.photo-thumbnail');
-                    if(thumb) { thumb.src = ''; thumb.classList.add('hidden'); }
+                    const thumbs = item.querySelector('.photo-thumbs');
+                    if(thumbs) thumbs.innerHTML = '';
                     const pBtn = item.querySelector('.photo-btn');
                     if(pBtn) pBtn.classList.remove('has-photo');
                     
@@ -1596,7 +1630,8 @@
                     const configId = uniqueId.replace(`${section}-`, '');
                     const cfgItem = findConfigItem(configId);
                     const isFilled = item.classList.contains('completed');
-                    const hasPhoto = !!currentPhotos[uniqueId];
+                    const photoCount = photosOf(uniqueId).length;
+                    const hasPhoto = photoCount > 0;
                     const hasComment = !!item.querySelector('.comment-text').textContent.trim();
                     // вимога залежить від відповіді: фото при «Отримав», текст при «Подано»,
                     // коментар при будь-якій червоній відповіді
@@ -1624,7 +1659,7 @@
                     else if (isCommentRequired && !hasComment) valDisplay = `<span class="text-red-500 font-bold">${valDisplay} (Потрібен коментар)</span>`;
                     if (!isItemValid) refreshNeedNote(item);
                     
-                    const photoIcon = hasPhoto ? '📷' : '';
+                    const photoIcon = hasPhoto ? (photoCount > 1 ? `📷×${photoCount}` : '📷') : '';
                     tableHtml += `<tr><td class="${!isItemValid ? 'text-red-600 font-medium' : ''}">${text}</td><td>${valDisplay} ${photoIcon}</td></tr>`;
                 });
                 tableHtml += '</tbody></table>';

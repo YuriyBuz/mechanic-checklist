@@ -512,5 +512,47 @@ t('10-2 без норми — завжди норма', stV4('mech.10-2', ['7', 
 t('7-14: 3,8 / 3,3 → увага по «після»; 3,8 / 3,4 — норма',
   stV4('mech.7-14', ['3.8', '3.3']).warn === 1 && stV4('mech.7-14', ['3.8', '3.4']).ok === 1);
 
+console.log('\n── до 3 фото на пункт ──');
+store.props['PHOTO_FOLDER_ID'] = 'stub-folder';
+store.files.length = 0;
+store.mail.length = 0;
+const PX = k => 'data:image/jpeg;base64,' + Buffer.from('jpeg-' + k).toString('base64');
+const rPh = submitReport_({ report_id: 'PH-1', business_date: todayStr, stage: 'Початок зміни',
+  role: 'Механік', token: adm.token, deviceId: 'dev5',
+  items: [
+    { item_id: 'mech.7-14', value: '', values: ['3.8', '3.6'], comment: '', photos: [PX(1), PX(2)], photoData: PX(1) },
+    { item_id: 'mech.0-1', value: 'Отримав', values: [], comment: '', photoData: PX(3) },      // старий клієнт: одне поле
+    { item_id: 'mech.1-1', value: '', values: ['55', '60'], comment: '', photos: [], photoData: null }
+  ] });
+t('звіт прийнято без попереджень', rPh.ok === true && !(rPh.warnings || []).length);
+const phRows = readTable('13_Фото').rows.filter(r => r[1] === 'PH-1');
+t('у 13_Фото три рядки #p1..#p3', phRows.map(r => r[0]).join() === 'PH-1#p1,PH-1#p2,PH-1#p3');
+t('  два на 7-14 (масив photos), один на 0-1 (старе photoData)',
+  phRows.filter(r => r[2] === 'mech.7-14').length === 2 && phRows.filter(r => r[2] === 'mech.0-1').length === 1);
+t('  усі збережені на Диск', phRows.every(r => r[5] === 'saved' && /drive\.google\.com/.test(r[3])));
+t('файли 7-14 мають суфікси _1 і _2, файл 0-1 — без суфікса',
+  store.files.map(f => f.getName()).join(' ').replace(/\S*_(mech\.[\d-]+)_PH-1(_\d)?\.jpg/g, '$1$2').trim() === 'mech.7-14_1 mech.7-14_2 mech.0-1');
+const a714 = readTable('12_Відповіді').rows.filter(r => r[1] === 'PH-1').find(r => r[6] === 'mech.7-14');
+t('у відповіді 7-14 — обидва посилання через пробіл', a714 && a714[16].split(' ').length === 2 && a714[16].split(' ').every(u => /drive\.google\.com/.test(u)));
+t('11_Звіти: photos_saved = 3', readTable('11_Звіти').rows.find(r => r[0] === 'PH-1')[13] === 3);
+const phMail = store.mail[0];
+t('у листі три вбудовані картинки і три вкладення',
+  phMail && Object.keys(phMail.inlineImages).length === 3 && phMail.attachments.length === 3);
+t('  дві з них у рядку 7-14 — «Посилання 1» і «Посилання 2»',
+  phMail && /Посилання 1<\/a>[\s\S]*Посилання 2<\/a>/.test(phMail.htmlBody) && (phMail.htmlBody.match(/cid:img_/g) || []).length === 3);
+const rCap = submitReport_({ report_id: 'PH-2', business_date: todayStr, stage: 'Початок зміни',
+  role: 'Механік', token: adm.token, deviceId: 'dev5',
+  items: [{ item_id: 'mech.7-14', value: '', values: ['3.8', '3.6'], comment: '', photos: [1, 2, 3, 4, 5].map(PX) }] });
+t('більше трьох не беремо: з 5 надісланих збережено 3, без помилок',
+  rCap.ok === true && readTable('13_Фото').rows.filter(r => r[1] === 'PH-2').length === 3 &&
+  readTable('11_Звіти').rows.find(r => r[0] === 'PH-2')[13] === 3 && !(rCap.warnings || []).length);
+store.props['PHOTO_FOLDER_ID'] = '';
+const rNoF = submitReport_({ report_id: 'PH-3', business_date: todayStr, stage: 'Початок зміни',
+  role: 'Механік', token: adm.token, deviceId: 'dev5',
+  items: [{ item_id: 'mech.7-14', value: '', values: ['3.8', '3.6'], comment: '', photos: [PX(1), PX(2)] }] });
+t('без папки на Диску: два рядки failed і попередження «Не збереглося фото: 2»',
+  rNoF.ok === true && readTable('13_Фото').rows.filter(r => r[1] === 'PH-3' && r[5] === 'failed').length === 2 &&
+  (rNoF.warnings || []).some(w => /Не збереглося фото: 2/.test(w)));
+
 console.log('\n' + (fails ? '❌ ПОМИЛОК: ' + fails : '✅ Усі перевірки пройдено'));
 process.exit(fails ? 1 : 0);

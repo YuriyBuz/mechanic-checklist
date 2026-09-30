@@ -155,10 +155,13 @@ function sendReportEmail_(p, user, bizDate, cnt, alerts, photos, items) {
   var cidByItem = {};
   var n = 0;
   Object.keys(photos.blobs || {}).forEach(function (itemId) {
-    var cid = 'img_' + (n++);
-    cidByItem[itemId] = cid;
-    inlineImages[cid] = photos.blobs[itemId].copyBlob().setName(cid);
-    attachments.push(photos.blobs[itemId]);
+    cidByItem[itemId] = [];
+    photos.blobs[itemId].forEach(function (blob) {
+      var cid = 'img_' + (n++);
+      cidByItem[itemId].push(cid);
+      inlineImages[cid] = blob.copyBlob().setName(cid);
+      attachments.push(blob);
+    });
   });
 
   /* Дата в шапці. Час брався з моменту складання листа — і для звіту, що
@@ -199,10 +202,14 @@ function sendReportEmail_(p, user, bizDate, cnt, alerts, photos, items) {
       var boldWeight = (isBad || isWarn) ? 'font-weight: bold;' : '';
       var prefix = isBad ? '❗ ' : (isWarn ? '⚠️ ' : '');
 
-      var cid = cidByItem[it.item_id];
-      var photoHtml = cid
-        ? '<img src="cid:' + cid + '" style="max-width:100px;border-radius:4px;"><br>' +
-          '<a href="' + esc_(photos.urls[it.item_id] || '') + '" style="font-size: 11px; color: #3b82f6;">Посилання</a>'
+      var cids = cidByItem[it.item_id] || [];
+      var urls = photos.urls[it.item_id] || [];
+      var photoHtml = cids.length
+        ? cids.map(function (cid, i) {
+            return '<img src="cid:' + cid + '" style="max-width:100px;border-radius:4px;"><br>' +
+              '<a href="' + esc_(urls[i] || '') + '" style="font-size: 11px; color: #3b82f6;">Посилання' +
+              (cids.length > 1 ? ' ' + (i + 1) : '') + '</a>';
+          }).join('<br>')
         : "<span style='color:#cbd5e1;'>-</span>";
 
       html += '' +

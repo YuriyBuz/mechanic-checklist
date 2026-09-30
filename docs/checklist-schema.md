@@ -137,6 +137,13 @@ value_text · value_num_1..3 · status · status_original · comment · photo_ur
 
 **`13_Фото`** — `photo_id · report_id · item_id · url · drive_file_id · status · error`
 
+До одного пункту — до трьох фото (`MAX_PHOTOS_PER_ITEM` у Code.gs). Клієнт шле
+масив `photos`, а в `photoData` дублює перше з них — для розгортання, яке ще не
+знає масиву; старий клієнт і його черга шлють лише `photoData`, і сервер бере
+його як єдине фото. `photo_id` нумерується наскрізь у межах звіту (`#p1`, `#p2`, …),
+файл другого і третього фото має суфікс `_2`, `_3`; у `12_Відповіді.photo_url`
+посилання пункту записані через пробіл. У листі кожне фото — окрема картинка.
+
 **`14_Журнал_подій`** — `ts · type · event · report_id · user_id · details · app_version`
 
 ### Похідні
