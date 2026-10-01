@@ -568,6 +568,14 @@ t('невідомий звіт — зрозуміла помилка, листа
 t('звіт, де фото не збереглися (PH-3) — лист іде без картинок', (() => { store.mail.length = 0;
   const m = resendReport('PH-3'); return store.mail.length === 1 && /не знайдено фото: 2/.test(m) &&
   !Object.keys(store.mail[0].inlineImages).length; })());
+// кнопка «Виконати» без аргументу: знаходить mail.failed без пізнішого mail.resent
+logEvent('Техніка', 'mail.failed', 'TypeError: photos.blobs[itemId].copyBlob is not a function', { report_id: 'PH-2' });
+store.mail.length = 0;
+const auto1 = resendReport();
+t('без аргументу — надсилає всі звіти з mail.failed (PH-2)', store.mail.length === 1 && /без листа за 3 дн.: 1/.test(auto1) && /✓ .*PH-2/.test(auto1));
+store.mail.length = 0;
+const auto2 = resendReport();
+t('  і вдруге вже нічого не шле: лист позначено mail.resent', store.mail.length === 0 && /: 0$/m.test(auto2));
 
 console.log('\n' + (fails ? '❌ ПОМИЛОК: ' + fails : '✅ Усі перевірки пройдено'));
 process.exit(fails ? 1 : 0);

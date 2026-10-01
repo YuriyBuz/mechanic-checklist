@@ -121,17 +121,47 @@ function auditRecipients() {
  * кнопки, тому ❗ тепер стоїть там, де справді відхилення.
  */
 /**
+ * Надіслати листи за всіма звітами останніх днів, у яких лист не пішов:
+ * у 14_Журнал_подій є mail.failed без пізнішого mail.resent. Саме це робить
+ * кнопка «Виконати» на resendReport. Повертає підсумок по кожному звіту.
+ */
+function resendFailedMails(days) {
+  days = Number(days) || 3;
+  var since = Utilities.formatDate(new Date(Date.now() - days * 86400000), 'UTC', 'yyyy-MM-dd');
+  var ev = readTable(SH.EVENTS), E = ev.col;
+  var failed = {}, resent = {};
+  ev.rows.forEach(function (r) {
+    var ts = r[E.ts] instanceof Date ? r[E.ts].toISOString() : String(r[E.ts] || '');
+    var id = String(r[E.report_id] || '');
+    if (!id || ts < since) return;
+    if (r[E.event] === 'mail.failed') failed[id] = ts;
+    if (r[E.event] === 'mail.resent') resent[id] = ts;
+  });
+  var ids = Object.keys(failed).filter(function (id) { return !resent[id] || resent[id] < failed[id]; });
+  var out = ['Звітів без листа за ' + days + ' дн.: ' + ids.length];
+  ids.forEach(function (id) {
+    try { out.push('✓ ' + resendReport(id)); }
+    catch (e) { out.push('✗ ' + id + ': ' + e); }
+  });
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
+/**
  * Повторно надіслати лист за вже збереженим звітом — коли звіт у таблиці є,
  * а лист не пішов (у 14_Журнал_подій — mail.failed: старий Report.gs у
- * розгортанні, ліміт пошти, збій Gmail). Запускати з редактора:
- *     resendReport('2026-10-01_mech_start_e86c1b')
+ * розгортанні, ліміт пошти, збій Gmail). Без аргументу (кнопка «Виконати»)
+ * робить те саме для всіх таких звітів за останні 3 дні; з редактора можна
+ * і точково: resendReport('2026-10-01_mech_start_e86c1b').
  * Нічого не перераховує і не дописує: бере відповіді, статуси й фото так,
  * як вони лягли в 11_Звіти / 12_Відповіді / 13_Фото. Фото тягне з Диска за
  * drive_file_id, тому лист виходить той самий, що мав піти одразу.
  */
 function resendReport(reportId) {
   reportId = String(reportId || '').trim();
-  if (!reportId) throw new Error('resendReport: вкажіть report_id, наприклад resendReport("2026-10-01_mech_start_e86c1b")');
+  // Кнопка «Виконати» аргумент не передає — тоді шукаємо самі, чиї листи не пішли
+  if (!reportId) return resendFailedMails();
   var rep = readTable(SH.REPORTS);
   var r = rep.rows.filter(function (x) { return String(x[rep.col.report_id]) === reportId; })[0];
   if (!r) throw new Error('resendReport: у 11_Звіти немає звіту ' + reportId);
