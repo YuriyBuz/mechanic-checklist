@@ -554,5 +554,20 @@ t('без папки на Диску: два рядки failed і поперед
   rNoF.ok === true && readTable('13_Фото').rows.filter(r => r[1] === 'PH-3' && r[5] === 'failed').length === 2 &&
   (rNoF.warnings || []).some(w => /Не збереглося фото: 2/.test(w)));
 
+console.log('\n── повторна відправка листа (resendReport) ──');
+store.mail.length = 0;
+const resent = resendReport('PH-1');
+t('лист за збереженим звітом пішов знову', store.mail.length === 1 && /PH-1/.test(resent) && /фото 3/.test(resent));
+t('  та сама тема, ті самі одержувачі', store.mail[0].subject === phMail.subject && store.mail[0].to === phMail.to);
+t('  три картинки з Диска, 7-14 знову з двома посиланнями',
+  Object.keys(store.mail[0].inlineImages).length === 3 && store.mail[0].attachments.length === 3 &&
+  /Посилання 1<\/a>[\s\S]*Посилання 2<\/a>/.test(store.mail[0].htmlBody));
+t('  подію mail.resent записано', readTable('14_Журнал_подій').rows.some(r => r[2] === 'mail.resent' && r[3] === 'PH-1'));
+t('невідомий звіт — зрозуміла помилка, листа немає', (() => { store.mail.length = 0;
+  try { resendReport('NEMA-TAKOGO'); return false; } catch (e) { return /11_Звіти/.test(String(e)) && !store.mail.length; } })());
+t('звіт, де фото не збереглися (PH-3) — лист іде без картинок', (() => { store.mail.length = 0;
+  const m = resendReport('PH-3'); return store.mail.length === 1 && /не знайдено фото: 2/.test(m) &&
+  !Object.keys(store.mail[0].inlineImages).length; })());
+
 console.log('\n' + (fails ? '❌ ПОМИЛОК: ' + fails : '✅ Усі перевірки пройдено'));
 process.exit(fails ? 1 : 0);

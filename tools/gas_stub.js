@@ -99,6 +99,10 @@ global.DriveApp = { getFolderById: id => {
   if (id !== 'stub-folder') throw new Error('no drive in stub');
   return { createFile: blob => { const n = store.files.push(blob);
     return { getId: () => 'F' + n, getUrl: () => 'https://drive.google.com/file/d/F' + n }; } };
+}, getFileById: id => {
+  const b = store.files[Number(String(id).slice(1)) - 1];
+  if (!b) throw new Error('Exception: Unexpected error while getting the method or property getFileById: ' + id);
+  return { getBlob: () => b, getId: () => id };
 } };
 global.MimeType = { JPEG: 'image/jpeg' };
 module.exports = { store, Sheet, SS };

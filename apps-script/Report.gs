@@ -120,6 +120,73 @@ function auditRecipients() {
  * Єдина відмінність від старого: статус береться з довідників, а не з позиції
  * кнопки, тому ❗ тепер стоїть там, де справді відхилення.
  */
+/**
+ * Повторно надіслати лист за вже збереженим звітом — коли звіт у таблиці є,
+ * а лист не пішов (у 14_Журнал_подій — mail.failed: старий Report.gs у
+ * розгортанні, ліміт пошти, збій Gmail). Запускати з редактора:
+ *     resendReport('2026-10-01_mech_start_e86c1b')
+ * Нічого не перераховує і не дописує: бере відповіді, статуси й фото так,
+ * як вони лягли в 11_Звіти / 12_Відповіді / 13_Фото. Фото тягне з Диска за
+ * drive_file_id, тому лист виходить той самий, що мав піти одразу.
+ */
+function resendReport(reportId) {
+  reportId = String(reportId || '').trim();
+  if (!reportId) throw new Error('resendReport: вкажіть report_id, наприклад resendReport("2026-10-01_mech_start_e86c1b")');
+  var rep = readTable(SH.REPORTS);
+  var r = rep.rows.filter(function (x) { return String(x[rep.col.report_id]) === reportId; })[0];
+  if (!r) throw new Error('resendReport: у 11_Звіти немає звіту ' + reportId);
+  var R = function (name) { var v = r[rep.col[name]]; return v === undefined || v === null ? '' : v; };
+  var cell = function (v) { return v instanceof Date ? Utilities.formatDate(v, TZ, 'yyyy-MM-dd') : String(v); };
+
+  var dict = loadDictionaries_();
+  var ans = readTable(SH.ANSWERS), A = ans.col;
+  var items = [], alerts = [], cnt = { ok: 0, warn: 0, alert: 0, empty: 0, unknown: 0 };
+  ans.rows.filter(function (x) { return String(x[A.report_id]) === reportId; })
+    .sort(function (a, b) { return Number(a[A.seq]) - Number(b[A.seq]); })
+    .forEach(function (x) {
+      var id = String(x[A.item_id]);
+      var item = dict.byId[id];
+      var nums = [x[A.value_num_1], x[A.value_num_2], x[A.value_num_3]]
+        .filter(function (v) { return v !== '' && v !== null && v !== undefined; });
+      var value = String(x[A.value_text] || '') || nums.join(' / ');
+      var status = String(x[A.status] || 'unknown');
+      var text = String(x[A.item_text_snapshot] || (item ? item.text : id));
+      var comment = String(x[A.comment] || '');
+      cnt[status] = (cnt[status] || 0) + 1;
+      if (status === 'alert' || status === 'warn') alerts.push({ status: status, text: text, value: value, comment: comment });
+      items.push({ group: item ? item.group_title : 'Інше', text: text, value: value,
+                   status: status, comment: comment, item_id: id });
+    });
+  if (!items.length) throw new Error('resendReport: у 12_Відповіді немає рядків звіту ' + reportId);
+
+  var photos = { blobs: {}, urls: {}, saved: 0, failed: 0 };
+  var ph = readTable(SH.PHOTOS), P = ph.col;
+  ph.rows.filter(function (x) { return String(x[P.report_id]) === reportId; }).forEach(function (x) {
+    if (String(x[P.status]) !== 'saved' || !x[P.drive_file_id]) { photos.failed++; return; }
+    var id = String(x[P.item_id]);
+    try {
+      var blob = DriveApp.getFileById(String(x[P.drive_file_id])).getBlob();
+      (photos.blobs[id] = photos.blobs[id] || []).push(blob);
+      (photos.urls[id] = photos.urls[id] || []).push(String(x[P.url] || ''));
+      photos.saved++;
+    } catch (e) {
+      photos.failed++;
+      logEvent('Техніка', 'resend.photo_missing', String(e), { report_id: reportId });
+    }
+  });
+
+  var p = { report_id: reportId, role: String(R('role')), stage: String(R('stage')) };
+  var user = { user_id: String(R('user_id')), name: String(R('user_name_snapshot')) };
+  sendReportEmail_(p, user, cell(R('business_date')), cnt, alerts, photos, items);
+  logEvent('Звіт', 'mail.resent', 'пунктів ' + items.length + ', фото ' + photos.saved,
+           { report_id: reportId, user_id: user.user_id });
+  var msg = 'Лист за звітом ' + reportId + ' надіслано повторно: ' + p.stage + ', ' + user.name +
+            ', пунктів ' + items.length + ', фото ' + photos.saved +
+            (photos.failed ? ', не знайдено фото: ' + photos.failed : '');
+  Logger.log(msg);
+  return msg;
+}
+
 function sendReportEmail_(p, user, bizDate, cnt, alerts, photos, items) {
   var to = recipientsFor_(p.role);
   if (!to.length) {
