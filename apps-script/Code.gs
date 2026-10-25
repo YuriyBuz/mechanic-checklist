@@ -21,7 +21,7 @@
 
 // Версія бекенду. Її віддає ?action=ping і вона лягає в кожен звіт —
 // саме за нею видно, чи розгортання справді підхопило новий код.
-var APP_VERSION = 'checklist-2026-09-30-v4.1';
+var APP_VERSION = 'checklist-2026-10-25-v4.2';
 
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) || 'getConfig';
@@ -181,14 +181,15 @@ function submitReport_(p) {
       value: it.value || filled.join(' / '),
       status: status,
       comment: it.comment || '',
-      item_id: it.item_id
+      item_id: it.item_id,
+      at: answeredAt_(it.answered_at)
     });
 
     answers.push([
       p.report_id + '#' + (i + 1), p.report_id, bizDate, p.stage, p.role, user.user_id,
       it.item_id, item ? item.text : (it.legacy_text || ''), i + 1,
       it.value || '', num_(nums, 0), num_(nums, 1), num_(nums, 2),
-      status, '', it.comment || '', ''
+      status, '', it.comment || '', '', answeredAt_(it.answered_at)
     ]);
   });
 
@@ -386,6 +387,15 @@ function itemPhotos_(it) {
   var list = Array.isArray(it.photos) ? it.photos.slice() : [];
   if (!list.length && it.photoData) list = [it.photoData];
   return list.filter(function (x) { return typeof x === 'string' && x; }).slice(0, MAX_PHOTOS_PER_ITEM);
+}
+
+/** Час натискання кнопки на планшеті (ISO від клієнта) → «yyyy-MM-dd HH:mm:ss» за Києвом.
+ *  Старий клієнт і застосунок майстра часу не шлють — тоді порожньо. */
+function answeredAt_(iso) {
+  if (!iso) return '';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return Utilities.formatDate(d, TZ, 'yyyy-MM-dd HH:mm:ss');
 }
 
 function savePhotos_(p, answers, dict) {

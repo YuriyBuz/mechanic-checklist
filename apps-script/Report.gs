@@ -185,7 +185,8 @@ function resendReport(reportId) {
       cnt[status] = (cnt[status] || 0) + 1;
       if (status === 'alert' || status === 'warn') alerts.push({ status: status, text: text, value: value, comment: comment });
       items.push({ group: item ? item.group_title : 'Інше', text: text, value: value,
-                   status: status, comment: comment, item_id: id });
+                   status: status, comment: comment, item_id: id,
+                   at: A.answered_at === undefined ? '' : x[A.answered_at] });
     });
   if (!items.length) throw new Error('resendReport: у 12_Відповіді немає рядків звіту ' + reportId);
 
@@ -320,6 +321,7 @@ function sendReportEmail_(p, user, bizDate, cnt, alerts, photos, items) {
         '</td>' +
         '<td style="border: 1px solid #e2e8f0; padding: 10px; text-align: center; ' + boldWeight + '">' +
         esc_(it.value || (it.status === 'empty' ? '-' : 'OK')) +
+        answerTimeHtml_(it.at, bizDate) +
         '</td>' +
         '<td style="border: 1px solid #e2e8f0; padding: 10px; text-align: center;">' + photoHtml + '</td>' +
         '</tr>';
@@ -341,9 +343,91 @@ function sendReportEmail_(p, user, bizDate, cnt, alerts, photos, items) {
   });
 }
 
+/* Біля відповіді — коли механік справді натиснув кнопку. Якщо не того дня,
+   що звіт (заповнював учора, відправив сьогодні), — ще й дата. */
+function answerTimeHtml_(at, bizDate) {
+  // таблиця сама перетворює «2026-10-25 08:42:10» на дату — приймаємо обидва вигляди
+  var s = at instanceof Date ? Utilities.formatDate(at, TZ, 'yyyy-MM-dd HH:mm:ss') : String(at || '');
+  if (bizDate instanceof Date) bizDate = Utilities.formatDate(bizDate, TZ, 'yyyy-MM-dd');
+  if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(s)) return '';
+  var t = s.slice(11, 16);
+  if (s.slice(0, 10) !== String(bizDate)) t = s.slice(8, 10) + '.' + s.slice(5, 7) + ' ' + t;
+  return '<br><span style="font-size:11px; color:#94a3b8; font-weight:normal;">🕒 ' + esc_(t) + '</span>';
+}
+
 function esc_(s) {
   return String(s === null || s === undefined ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/**
+ * Чек-лист не здано вчасно — сигнал того ж дня, а не наступного ранку.
+ * Тригер щопівгодини (installOverdueTrigger). Для кожної ролі й стадії, чий
+ * дедлайн минув, а звіту за сьогодні немає, — один лист тим, хто отримує звіти
+ * цієї ролі. Повторно за той самий день і ту саму зміну не шле.
+ * Дедлайни за Києвом — у властивостях скрипта, інакше типові:
+ *   DEADLINE_MECH_START 10:00   DEADLINE_MECH_END 20:30
+ *   DEADLINE_MASTER_START 10:00 DEADLINE_MASTER_END 21:00
+ */
+var OVERDUE_DEFAULTS = [
+  ['Механік', 'Початок зміни', 'DEADLINE_MECH_START', '10:00'],
+  ['Механік', 'Кінець зміни', 'DEADLINE_MECH_END', '20:30'],
+  ['Майстер', 'Початок зміни', 'DEADLINE_MASTER_START', '10:00'],
+  ['Майстер', 'Кінець зміни', 'DEADLINE_MASTER_END', '21:00']
+];
+function checkOverdue(now) {
+  now = now || new Date();
+  var day = businessDate(now), hm = Utilities.formatDate(now, TZ, 'HH:mm');
+  var props = PropertiesService.getScriptProperties();
+  var sentKey = 'OVERDUE_SENT_' + day;
+  var sent = String(props.getProperty(sentKey) || '').split('|').filter(String);
+
+  var rep = readTable(SH.REPORTS), got = {};
+  rep.rows.forEach(function (r) {
+    var bd = r[rep.col.business_date];
+    if (bd instanceof Date) bd = Utilities.formatDate(bd, TZ, 'yyyy-MM-dd');
+    if (String(bd) === day) got[r[rep.col.role] + '|' + r[rep.col.stage]] = true;
+  });
+
+  var late = [];
+  OVERDUE_DEFAULTS.forEach(function (d) {
+    var deadline = String(props.getProperty(d[2]) || d[3]).trim();
+    var key = d[0] + ' · ' + d[1];                    // «|» — роздільник списку у властивості
+    if (hm < deadline || got[d[0] + '|' + d[1]] || sent.indexOf(key) > -1) return;
+    late.push({ role: d[0], stage: d[1], deadline: deadline, key: key });
+  });
+  if (!late.length) return 'за ' + day + ' о ' + hm + ': усе вчасно';
+
+  late.forEach(function (x) {
+    var to = recipients_('MAIL_ALERT_TO');
+    if (!to.length) to = recipientsFor_(x.role);
+    if (to.length) {
+      var who = x.role === 'Майстер' ? 'майстра' : 'механіка';
+      MailApp.sendEmail({
+        to: to.join(','),
+        subject: '⏰ Не здано чек-лист ' + who + ': ' + x.stage + ' за ' + day,
+        htmlBody: '<div style="font-family:sans-serif"><p><b>Чек-лист ' + esc_(who) + ' «' + esc_(x.stage) +
+          '» за ' + esc_(day) + ' не здано.</b></p><p>Термін — ' + esc_(x.deadline) +
+          ', зараз ' + esc_(hm) + '. Якщо звіт лежить у черзі на планшеті без зв\'язку, ' +
+          'він прийде, щойно з\'явиться інтернет.</p></div>'
+      });
+    }
+    sent.push(x.key);
+    logEvent('Контроль', 'overdue', x.role + ' · ' + x.stage + ' (термін ' + x.deadline + ')' +
+             (to.length ? ' → ' + to.join(', ') : ' — нікому надсилати'));
+  });
+  props.setProperty(sentKey, sent.join('|'));
+  return 'не здано вчасно: ' + late.map(function (x) { return x.role + ' · ' + x.stage; }).join(', ');
+}
+
+/** Поставити checkOverdue щопівгодини. Повторний запуск не плодить тригерів. */
+function installOverdueTrigger() {
+  var had = ScriptApp.getProjectTriggers().filter(function (t) {
+    return t.getHandlerFunction() === 'checkOverdue';
+  });
+  if (had.length) return 'Тригер checkOverdue вже стоїть (' + had.length + ')';
+  ScriptApp.newTrigger('checkOverdue').timeBased().everyMinutes(30).create();
+  return 'Тригер checkOverdue поставлено: щопівгодини';
 }
 
 /**

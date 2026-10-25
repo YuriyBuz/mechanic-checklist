@@ -61,7 +61,7 @@ function schemaDefs_() {
       header: ['answer_id', 'report_id', 'business_date', 'stage', 'role', 'user_id',
                'item_id', 'item_text_snapshot', 'seq',
                'value_text', 'value_num_1', 'value_num_2', 'value_num_3',
-               'status', 'status_original', 'comment', 'photo_url'],
+               'status', 'status_original', 'comment', 'photo_url', 'answered_at'],
       widths: { answer_id: 260, report_id: 240, item_text_snapshot: 420, comment: 360 },
       text: ['answer_id', 'report_id', 'business_date', 'value_text', 'comment'],
       validation: { status: ['ok', 'warn', 'alert', 'empty', 'unknown'],

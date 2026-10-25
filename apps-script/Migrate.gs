@@ -517,3 +517,64 @@ function seedV4(launchDate) {
 function seedV4Now() {
   return seedV4(businessDate());
 }
+
+/**
+ * Норми 25.10: перенести в 01_Пункти норми, підказки й примітки чотирьох пунктів
+ * із SeedV4.gs. Більше нічого не чіпає: ні active_from, ні тексти, ні відповіді.
+ * Повторний запуск нічого не змінює. Кнопка «Виконати» в редакторі.
+ */
+var NORMS_2510_IDS = ['mech.7-14', 'mech.1-5', 'mech.9-2', 'mech.2-4'];
+function updateNorms2510() {
+  return withLock(function () {
+    var cols = ['norm_min_1', 'norm_max_1', 'warn_min_1', 'warn_max_1',
+                'norm_min_2', 'norm_max_2', 'warn_min_2', 'warn_max_2',
+                'norm_min_3', 'norm_max_3', 'warn_min_3', 'warn_max_3', 'hint', 'notes'];
+    var it = readTable(SH.ITEMS), out = [], changed = 0;
+    NORMS_2510_IDS.forEach(function (id) {
+      var src = V4_ITEMS.filter(function (r) { return r[0] === id; })[0];
+      if (!src) throw new Error('У SeedV4.gs немає ' + id);
+      var o = {}; V4_ITEM_COLS.forEach(function (c, i) { o[c] = src[i]; });
+      var row = -1;
+      it.rows.forEach(function (r, i) { if (String(r[0]) === id) row = i; });
+      if (row < 0) { out.push(id + ': немає в 01_Пункти'); return; }
+      var diff = [];
+      cols.forEach(function (c) {
+        var ci = it.col[c];
+        if (ci === undefined) return;
+        var now = it.rows[row][ci], want = o[c] === undefined ? '' : o[c];
+        if (String(now) === String(want)) return;
+        it.sheet.getRange(row + 2, ci + 1).setValue(want);
+        if (/^(norm|warn)/.test(c)) diff.push(c + ' ' + (now === '' ? '—' : now) + '→' + (want === '' ? '—' : want));
+        changed++;
+      });
+      out.push(id + ': ' + (diff.length ? diff.join(', ') : 'норми вже актуальні'));
+    });
+    var msg = 'Норми 25.10 (змінено клітинок: ' + changed + ')\n' + out.join('\n');
+    logEvent('Схема', 'updateNorms2510', msg);
+    Logger.log(msg);
+    return msg;
+  }, 30000);
+}
+
+/**
+ * Оновлення 25.10 — одна кнопка «Виконати»:
+ *   1) колонка answered_at у 12_Відповіді (час натискання кнопки на планшеті);
+ *   2) норми чотирьох пунктів (updateNorms2510);
+ *   3) щопівгодинна перевірка «чек-лист не здано вчасно» (installOverdueTrigger).
+ * Наявні рядки не чіпає. Повторний запуск безпечний.
+ */
+function upgrade2510() {
+  var out = [];
+  schemaDefs_().forEach(function (def) {
+    if (def.name === SH.ANSWERS) {
+      applySheetDef_(sheetByName(def.name), def);
+      out.push('12_Відповіді: колонка answered_at на місці');
+    }
+  });
+  out.push(updateNorms2510());
+  out.push(installOverdueTrigger());
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+

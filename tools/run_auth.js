@@ -509,8 +509,8 @@ t('4-1: 0 бар на працюючому котлі → увага',
 t('10-3: 2 виклики → увага; 4 → відхилення',
   stV4('mech.10-3', ['2', '0']).warn === 1 && stV4('mech.10-3', ['4', '0']).alert === 1);
 t('10-2 без норми — завжди норма', stV4('mech.10-2', ['7', '3']).ok === 1);
-t('7-14: 3,8 / 3,3 → увага по «після»; 3,8 / 3,4 — норма',
-  stV4('mech.7-14', ['3.8', '3.3']).warn === 1 && stV4('mech.7-14', ['3.8', '3.4']).ok === 1);
+t('7-14 (норми 25.10): 3,8 / 4,2 → увага по «після»; 2,4 / 2,4 — норма',
+  stV4('mech.7-14', ['3.8', '4.2']).warn === 1 && stV4('mech.7-14', ['2.4', '2.4']).ok === 1);
 
 console.log('\n── до 3 фото на пункт ──');
 store.props['PHOTO_FOLDER_ID'] = 'stub-folder';
@@ -576,6 +576,63 @@ t('без аргументу — надсилає всі звіти з mail.fail
 store.mail.length = 0;
 const auto2 = resendReport();
 t('  і вдруге вже нічого не шле: лист позначено mail.resent', store.mail.length === 0 && /: 0$/m.test(auto2));
+
+console.log('\n── 25.10: час натискання, незданий чек-лист, норми ──');
+store.props['PHOTO_FOLDER_ID'] = '';
+const up = upgrade2510();
+t('upgrade2510: колонка answered_at з\'явилась у 12_Відповіді', readTable('12_Відповіді').col.answered_at === 17);
+t('  норми в 01_Пункти: 7-14 червона межа 2,0, ресивер до 10', (() => { const it = readTable('01_Пункти');
+  const row = id => it.rows.find(r => r[0] === id);
+  return String(row('mech.7-14')[it.col.norm_min_1]) === '2' && String(row('mech.1-5')[it.col.norm_max_1]) === '10'; })());
+t('  тригер checkOverdue поставлено один раз', store.triggers.filter(h => h === 'checkOverdue').length === 1 &&
+  /вже стоїть/.test(installOverdueTrigger()));
+t('  повторний запуск норм нічого не змінює', /змінено клітинок: 0/.test(updateNorms2510()));
+const st25 = (id, values) => { const r = submitReport_({ report_id: 'Z' + Math.random(), business_date: todayStr,
+  stage: 'Початок зміни', role: 'Механік', token: adm.token, deviceId: 'dev5',
+  items: [{ item_id: id, value: '', values: values, comment: '' }] }); return r.counts; };
+t('7-14: 2,4 / 2,4 тепер норма (раніше ❗ щозміни)', st25('mech.7-14', ['2.4', '2.4']).ok === 1);
+t('7-14: 1,2 — відхилення', st25('mech.7-14', ['1.2', '1.2']).alert === 1);
+t('1-5: 9,5 бар — норма', st25('mech.1-5', ['9.5']).ok === 1);
+t('9-2: 0 бар — увага, а не відхилення', (() => { const c = st25('mech.9-2', ['0']); return c.warn === 1 && !c.alert; })());
+t('2-4: 3,4 — норма', st25('mech.2-4', ['3.4']).ok === 1);
+
+store.mail.length = 0;
+const atIso = new Date(Date.now() - 3 * 60000).toISOString();
+const yIso = new Date(Date.now() - 26 * 3600000).toISOString();
+submitReport_({ report_id: 'AT-1', business_date: todayStr, stage: 'Кінець зміни', role: 'Механік',
+  token: adm.token, deviceId: 'dev5', items: [
+    { item_id: 'mech.10-6', value: 'Так', values: [], comment: '', answered_at: atIso },
+    { item_id: 'mech.10-5', value: 'Не потрібно', values: [], comment: '', answered_at: yIso },
+    { item_id: 'mech.10-7', value: 'Немає', values: [], comment: '' }] });
+const atRows = readTable('12_Відповіді').rows.filter(r => r[1] === 'AT-1');
+const hhmm = Utilities.formatDate(new Date(atIso), TZ, 'HH:mm');
+t('час натискання записано в 12_Відповіді за Києвом', atRows[0][17] === Utilities.formatDate(new Date(atIso), TZ, 'yyyy-MM-dd HH:mm:ss'));
+t('без часу від клієнта — порожньо', atRows[2][17] === '');
+const atMail = store.mail[0];
+t('у листі біля відповіді — 🕒 час натискання', atMail && atMail.htmlBody.indexOf('🕒 ' + hhmm) > -1);
+t('  натиснуто не в день звіту — з датою', atMail && new RegExp('🕒 \\d\\d\\.\\d\\d \\d\\d:\\d\\d').test(atMail.htmlBody));
+t('  пункт без часу — без позначки', atMail && (atMail.htmlBody.match(/🕒/g) || []).length === 2);
+store.mail.length = 0; resendReport('AT-1');
+t('повторно надісланий лист теж із часом', store.mail[0] && store.mail[0].htmlBody.indexOf('🕒 ' + hhmm) > -1);
+
+// незданий чек-лист: моделюємо день без жодного звіту
+const OD = (hm) => new Date('2031-05-12T' + hm + ':00+03:00');
+const prevRep = readTable('11_Звіти').rows.length;
+store.mail.length = 0;
+t('до 10:00 — тиша', /усе вчасно/.test(checkOverdue(OD('09:55'))) && !store.mail.length);
+const od1 = checkOverdue(OD('10:05'));
+t('о 10:05 — сигнал про ранковий чек-лист механіка і майстра', /Механік · Початок зміни/.test(od1) &&
+  /Майстер · Початок зміни/.test(od1) && store.mail.length === 2);
+t('  тема каже, чий і за який день', store.mail.some(m => m.subject === '⏰ Не здано чек-лист механіка: Початок зміни за 2031-05-12'));
+store.mail.length = 0;
+t('о 10:35 — повторно не шле', /усе вчасно/.test(checkOverdue(OD('10:35'))) && !store.mail.length);
+appendRows('11_Звіти', [['OD-M', '', '2031-05-12', 'Кінець зміни', 'Механік', 'U-1', 'х', '', 1, 1, 0, 0, 0, 0, 0, 'app', '', '']]);
+const od2 = checkOverdue(OD('21:10'));
+t('о 21:10 — лише майстер: вечірній механіка вже здано', /Майстер · Кінець зміни/.test(od2) && !/Механік/.test(od2) && store.mail.length === 1);
+t('  подію overdue записано', readTable('14_Журнал_подій').rows.filter(r => r[2] === 'overdue').length === 3);
+store.props['DEADLINE_MECH_START'] = '07:00';
+t('дедлайн змінюється властивістю скрипта', /Механік · Початок зміни/.test(checkOverdue(new Date('2031-05-13T07:30:00+03:00'))));
+delete store.props['DEADLINE_MECH_START'];
 
 console.log('\n' + (fails ? '❌ ПОМИЛОК: ' + fails : '✅ Усі перевірки пройдено'));
 process.exit(fails ? 1 : 0);

@@ -70,11 +70,14 @@ global.Utilities = {
   sleep: () => {},                                  // у тестах не гальмуємо
   // Формат раніше ігнорувався, і businessDate() з localTime() віддавали
   // однаковий ISO-рядок — перевірити дату в листі було неможливо.
+  // як справжній: шаблон yyyy MM dd HH mm ss, текст у '…' — як є, з часовим поясом
   formatDate: (d, tz, f) => {
-    const iso = new Date(d).toISOString().replace(/\.\d+Z$/, 'Z');
-    if (f === 'yyyy-MM-dd') return iso.slice(0, 10);
-    if (f === 'HH:mm:ss') return iso.slice(11, 19);
-    return iso;
+    const parts = {};
+    new Intl.DateTimeFormat('en-GB', { timeZone: tz || 'UTC', hourCycle: 'h23', year: 'numeric', month: '2-digit',
+      day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      .formatToParts(new Date(d)).forEach(x => { parts[x.type] = x.value; });
+    return String(f).replace(/'([^']*)'|yyyy|MM|dd|HH|mm|ss/g, (m, lit) => lit !== undefined ? lit :
+      ({ yyyy: parts.year, MM: parts.month, dd: parts.day, HH: parts.hour, mm: parts.minute, ss: parts.second })[m]);
   }
 };
 global.PropertiesService = { getScriptProperties: () => ({
@@ -87,6 +90,13 @@ global.CacheService = { getScriptCache: () => ({
   remove: k => { delete store.cache[k]; }
 }) };
 global.LockService = { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) };
+// тригери: запам'ятовуємо, що поставили
+store.triggers = [];
+global.ScriptApp = {
+  getProjectTriggers: () => store.triggers.map(h => ({ getHandlerFunction: () => h })),
+  newTrigger: h => { const b = { timeBased: () => b, everyMinutes: () => b, everyHours: () => b,
+    atHour: () => b, everyDays: () => b, create: () => { store.triggers.push(h); return {}; } }; return b; }
+};
 global.Logger = { log: m => store.log.push(m) };
 global.Session = { getEffectiveUser: () => ({ getEmail: () => 'stub@example.com' }),
                    getActiveUser: () => ({ getEmail: () => 'stub@example.com' }) };

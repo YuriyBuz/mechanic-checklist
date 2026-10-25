@@ -121,11 +121,9 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   t('чек-лист після перезавантаження — з кешу, той самий',
     (await page.locator('#startShiftSection .checklist-item').count()) === 54);
 
-  console.log('\n── фото після перезавантаження — заново ──');
-  for (const id of needPhoto) {
-    await page.setInputFiles(`#start-${id} .photo-input`, { name: 'p.jpg', mimeType: 'image/jpeg', buffer: JPEG });
-    await page.waitForTimeout(250);
-  }
+  console.log('\n── фото пережили перезавантаження ──');
+  t('усі фото на місці без повторної зйомки',
+    (await page.locator('#startShiftSection .photo-btn.has-photo').count()) === needPhoto.length);
 
   console.log('\n── кілька фото на один пункт ──');
   const thumbs714 = () => page.locator('#start-7-14 .photo-thumbs .photo-thumbnail').count();
@@ -190,6 +188,8 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   t('0-1 «Отримав» із фото бланка', (() => { const x = p.items.find(i => i.item_id === 'mech.0-1');
     return x.value === 'Отримав' && !!x.photoData; })());
   t('коментар до 1-2 поїхав', p.items.find(i => i.item_id === 'mech.1-2').comment === 'E12 на пульті №2');
+  t('кожна відповідь має час натискання', p.items.filter(i => i.value || (i.values || []).some(Boolean))
+    .every(i => /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d/.test(i.answered_at) && Math.abs(Date.parse(i.answered_at) - Date.now()) < 15 * 60000));
   t('фото додані', p.items.filter(i => i.photoData).length === needPhoto.length &&
     p.items.reduce((n, i) => n + (i.photos || []).length, 0) === needPhoto.length + 1);
   t('пункти без фото шлють порожній масив і photoData: null',
@@ -198,6 +198,12 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   console.log('\n── кінець зміни: вимога залежить від відповіді, передача зміни ──');
   await page.click('#endShiftBtn'); await page.waitForTimeout(400);
   t('38 пунктів увечері', (await page.locator('#endShiftSection .checklist-item').count()) === 38);
+  t('біля «Протерти термоголовку» знову є кнопка інструкції', (await page.locator('#end-6-6-end .tooltip-btn').count()) === 1);
+  await page.click('#end-6-6-end .tooltip-btn'); await page.waitForTimeout(300);
+  t('  інструкція з першої версії: спирт, в одному напрямку, заборони',
+    /Очищення термоголовки/.test(await dlgText()) && /В ОДНОМУ НАПРЯМКУ/.test(await dlgText()) && /ЗАБОРОНИ/.test(await dlgText()));
+  await closeDlg();
+  t('  інші пункти без кнопки інструкції', (await page.locator('#endShiftSection .tooltip-btn').count()) === 1);
   const titlesEnd = await page.locator('#endShiftSection h3').allTextContents();
   t('увечері є «Підсумок зміни», немає «Завдань»',
     titlesEnd.some(x => /^10\./.test(x)) && !titlesEnd.some(x => /^0\./.test(x)));

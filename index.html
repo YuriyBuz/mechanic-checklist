@@ -13,6 +13,8 @@
     <link rel="apple-touch-icon" href="https://foodline-production.com/wp-content/uploads/2021/10/3752781497_3752781497.webp">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Свайп униз на планшеті перезавантажував сторінку посеред заповнення */
+        html, body { overscroll-behavior-y: contain; }
         /* Base Variables for Theming */
         :root {
             --bg-color: #f8fafc;
@@ -402,7 +404,7 @@
            і саме воно потрапляє у звіт. Підмінити автора неможливо —
            сервер бере ім'я з підтвердженої сесії, а не з запиту.          */
 
-        const APP_VERSION    = 'checklist-client-2026-09-30-v4.1';
+        const APP_VERSION    = 'checklist-client-2026-10-25-v4.2';
         const CONFIG_VERSION = 'client-no-config';   // лише доки сервер не віддав свою версію
         const SESSION_KEY    = 'checklistSessionV1';
         const DEVICE_KEY     = 'checklistDeviceIdV1';
@@ -755,6 +757,39 @@
             let currentSection = 'start';
             let currentPhotos = {};           // id пункту → масив фото (dataURL), до MAX_PHOTOS_PER_ITEM
             const MAX_PHOTOS_PER_ITEM = 3;    // ті самі три, що приймає сервер
+
+            /* Фото пункту зберігаються в IndexedDB одразу після зйомки. Раніше вони жили
+               лише в пам'яті сторінки, і коли Android вивантажував вкладку, поки відкрита
+               камера (або планшет вимикали), відповіді поверталися, а фото — ні.
+               localStorage для них замалий: 5 МБ на все, разом із чергою звітів. */
+            const PhotoStore = (() => {
+                let dbp = null;
+                const db = () => dbp || (dbp = new Promise((res, rej) => {
+                    const r = indexedDB.open('checklistPhotosV1', 1);
+                    r.onupgradeneeded = () => r.result.createObjectStore('photos');
+                    r.onsuccess = () => res(r.result);
+                    r.onerror = () => rej(r.error);
+                }));
+                const run = (mode, fn) => db().then(d => new Promise((res, rej) => {
+                    const t = d.transaction('photos', mode);
+                    const out = fn(t.objectStore('photos'));
+                    t.oncomplete = () => res(out);
+                    t.onerror = t.onabort = () => rej(t.error);
+                }));
+                return {
+                    put: (id, list) => run('readwrite', st => { if (list && list.length) st.put(list.slice(), id); else st.delete(id); })
+                        .catch(e => console.warn('фото не збережено в IndexedDB', e)),
+                    all: () => run('readonly', st => {
+                        const out = {};
+                        st.openCursor().onsuccess = (e) => { const c = e.target.result; if (c) { out[c.key] = c.value; c.continue(); } };
+                        return out;
+                    }).catch(() => ({})),
+                    dropSection: (section) => run('readwrite', st => {
+                        st.openCursor().onsuccess = (e) => { const c = e.target.result;
+                            if (c) { if (String(c.key).indexOf(section + '-') === 0) c.delete(); c.continue(); } };
+                    }).catch(() => {})
+                };
+            })();
             let appState = {};
             let photoBusy = 0;
             const STORAGE_KEY = 'shiftChecklistState_v3';
@@ -774,6 +809,34 @@
                     return n >= 3 ? 'triple_input' : (n === 2 ? 'dual_input' : 'input');
                 }
                 return it.type === 'binary' ? 'binary' : 'input';
+            };
+            /* Інструкції до пунктів — кнопка «Як це робити?» біля тексту. Була в першій
+               версії для термоголовки принтера; довідник із сервера її не передає,
+               тому текст живе тут, за id пункту. */
+            const ITEM_GUIDES = {
+                '6-6-end': `
+                        <div class="text-left text-slate-800 dark:text-slate-200">
+                            <h4 class="font-bold text-lg mb-3 text-emerald-700 dark:text-emerald-400">🛠️ Очищення термоголовки принтера</h4>
+                            <p class="mb-3 text-sm"><strong>Матеріали:</strong> Ізопропіловий спирт, безворсова серветка (або ватна паличка).</p>
+                            <p class="font-bold text-sm mb-2">Порядок дій:</p>
+                            <ul class="text-sm space-y-2 mb-4 list-none pl-0">
+                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">🔌</span> <strong>Вимкніть живлення.</strong> Обов'язково знеструмте принтер перед обслуговуванням.</span></label></li>
+                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">🖨️</span> <strong>Звільніть доступ.</strong> Відкрийте кришку, підніміть механізм. Витягніть етикетки та ріббон.</span></label></li>
+                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">💧</span> <strong>Змочіть аплікатор.</strong> Нанесіть ізопропіловий спирт на серветку (без крапель).</span></label></li>
+                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">🧹</span> <strong>Протріть головку.</strong> Акуратно проведіть по темній лінії нагрівального елемента суворо В ОДНОМУ НАПРЯМКУ. Не тріть туди-сюди!</span></label></li>
+                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">⏳</span> <strong>Просушіть.</strong> Зачекайте 1-2 хвилини до повного випаровування спирту.</span></label></li>
+                                <li><label class="flex items-start cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded transition-colors"><input type="checkbox" class="mt-1 mr-3 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"><span><span class="mr-1">✅</span> <strong>Зберіть принтер.</strong> Встановіть матеріали, закрийте до клацання.</span></label></li>
+                            </ul>
+                            <div class="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-3 rounded text-sm text-red-800 dark:text-red-200 shadow-sm">
+                                <p class="font-bold mb-2 flex items-center text-red-600 dark:text-red-400"><span class="mr-2 text-lg">🛑</span> КРИТИЧНІ ЗАБОРОНИ (Увага!)</p>
+                                <ul class="list-disc pl-5 space-y-1">
+                                    <li>Заборонено торкатися елемента голими пальцями.</li>
+                                    <li>Заборонено використовувати ножі та інші жорсткі предмети для бруду.</li>
+                                    <li>Заборонено використовувати воду, ацетон чи інші розчинники.</li>
+                                </ul>
+                            </div>
+                        </div>
+                `
             };
             const adoptConfig = (cfg) => {
                 if (!cfg || !Array.isArray(cfg.items)) return false;
@@ -796,7 +859,9 @@
                         photoRequired: truthy(it.photo_required),
                         photoLabel: (type === 'input' && truthy(it.photo_required)) ? 'Фото' : undefined,
                         visibleOn: it.visible_on || 'all',
-                        hint: it.hint || ''
+                        hint: it.hint || '',
+                        hasTooltip: !!ITEM_GUIDES[String(it.item_id).replace(/^mech\./, '')],
+                        tooltipHtml: ITEM_GUIDES[String(it.item_id).replace(/^mech\./, '')] || ''
                     });
                 });
                 checklistConfig = groups;
@@ -832,7 +897,6 @@
                 // з моменту завантаження сторінки, і перечитуємо, бо restoreDOMState бере
                 // знімок у пам'яті: інакше після повторного входу відповіді зникли б.
                 saveState();
-                loadState();
                 adoptConfig(res.config);
                 if (currentSection === 'start' || currentSection === 'end') switchView(currentSection);
                 return true;
@@ -935,7 +999,8 @@
                             values: v.values,
                             comment: el.querySelector('.comment-text').textContent.trim(),
                             photos: photosOf(el.id),
-                            photoData: photosOf(el.id)[0] || null   // старе поле — для сервера, що ще не знає photos
+                            photoData: photosOf(el.id)[0] || null,  // старе поле — для сервера, що ще не знає photos
+                            answered_at: el.dataset.at ? new Date(Number(el.dataset.at)).toISOString() : ''
                         };
                     })
                 };
@@ -1161,6 +1226,7 @@
                 box.querySelectorAll('.photo-remove').forEach(btn => btn.addEventListener('click', () => {
                     list.splice(Number(btn.dataset.idx), 1);
                     if (list.length) currentPhotos[item.id] = list; else delete currentPhotos[item.id];
+                    PhotoStore.put(item.id, list);
                     renderThumbs(item);
                     refreshNeedNote(item);
                 }));
@@ -1205,6 +1271,7 @@
                             ctx.drawImage(img, 0, 0, width, height);
                             const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
                             (currentPhotos[uniqueId] = currentPhotos[uniqueId] || []).push(dataUrl);
+                            PhotoStore.put(uniqueId, currentPhotos[uniqueId]);
                             input.value = '';            // щоб той самий файл можна було вибрати ще раз
                             renderThumbs(item);
                             refreshNeedNote(item);
@@ -1272,6 +1339,7 @@
                                 item.classList.add('completed');
                                 item.classList.remove('error-highlight');
                                 item.dataset.value = btn.dataset.val;
+                                item.dataset.at = String(Date.now());      // справжній час натискання — для листа
                                 item.querySelector('.print-value').textContent = `Обрано: ${btn.dataset.val}`;
                                 saveState();
                                 updateProgress();
@@ -1289,6 +1357,7 @@
                                  item.classList.add('completed');
                                  item.classList.remove('error-highlight');
                                  item.dataset.value = input.value;
+                                 item.dataset.at = String(Date.now());
                                  item.querySelector('.print-value').textContent = `Значення: ${input.value}`;
                              } else {
                                  item.classList.remove('completed');
@@ -1310,6 +1379,7 @@
                                 item.classList.remove('error-highlight');
                                 const displayStr = inputs.map((i, k) => `${i.placeholder}: ${vals[k] || '-'}`).join(' / ');
                                 item.dataset.value = displayStr;
+                                item.dataset.at = String(Date.now());
                                 item.querySelector('.print-value').textContent = displayStr;
                             } else {
                                 item.classList.remove('completed');
@@ -1357,20 +1427,27 @@
                 cancelCommentBtn.addEventListener('click', () => commentModal.style.display = 'none');
             }
 
+            /* На екрані завжди лише одна вкладка. Раніше збереження писало тільки її і
+               затирало іншу, а повернення на вкладку відновлювало знімок на момент
+               відкриття сторінки — тож «Кінець зміни» і назад стирав набране зранку.
+               Тепер appState — живий стан обох вкладок, а з екрана оновлюється лише видиме. */
             const saveState = () => {
-                const state = {
-                    checklist: {},
-                    employee: employeeSelect.value,
-                    theme: document.body.classList.contains('dark') ? 'dark' : 'light'
-                };
+                const checklist = Object.assign({}, appState.checklist || {});
                 document.querySelectorAll('.checklist-item').forEach(item => {
-                    state.checklist[item.id] = {
+                    checklist[item.id] = {
                         completed: item.classList.contains('completed'),
                         value: item.dataset.value || '',
-                        comment: item.querySelector('.comment-text').textContent
+                        comment: item.querySelector('.comment-text').textContent,
+                        at: item.dataset.at || ''
                     };
                 });
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                appState = Object.assign({}, appState, {
+                    checklist: checklist,
+                    employee: employeeSelect.value,
+                    theme: document.body.classList.contains('dark') ? 'dark' : 'light'
+                });
+                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appState)); }
+                catch (e) { console.warn('стан не вліз у сховище', e); }
             };
 
             const loadState = () => {
@@ -1387,12 +1464,12 @@
             };
             
             const restoreDOMState = () => {
-                if(!appState.checklist) return;
-                Object.keys(appState.checklist).forEach(id => {
+                Object.keys(appState.checklist || {}).forEach(id => {
                     const el = document.getElementById(id);
                     if(el) {
                         const data = appState.checklist[id];
                         if (data.completed) el.classList.add('completed');
+                        if (data.at) el.dataset.at = data.at;
                         if (data.value) {
                             el.dataset.value = data.value;
                             if(el.dataset.type === 'binary') {
@@ -1422,8 +1499,12 @@
                             cEl.classList.remove('hidden');
                             el.querySelector('.comment-btn').classList.add('has-comment');
                         }
-                        if (photosOf(id).length) renderThumbs(el);   // фото живуть у пам'яті — після перемальовки показати знову
                     }
+                });
+                // мініатюри — для всіх пунктів із фото, навіть якщо відповіді ще немає
+                Object.keys(currentPhotos).forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && photosOf(id).length) renderThumbs(el);
                 });
                 updateProgress();
             };
@@ -1458,6 +1539,7 @@
                     if(pInput) pInput.value = '';
                     
                     delete currentPhotos[item.id];
+                    delete item.dataset.at;
                     
                     if(item.dataset.type === 'binary') {
                         item.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected-good', 'selected-bad', 'selected-neutral'));
@@ -1468,6 +1550,7 @@
                         fieldInputs(item).forEach(i => { i.value = ''; });
                     }
                 });
+                PhotoStore.dropSection(sectionId);
                 saveState();
                 updateProgress();
             };
@@ -1846,6 +1929,7 @@
             });
 
             loadState();
+            Object.assign(currentPhotos, await PhotoStore.all());   // фото, зняті до перезавантаження
             updateNetworkStatus();
             adoptConfig(loadCachedConfig());   // те, що бачили минулого разу — доки не прийде свіже
 

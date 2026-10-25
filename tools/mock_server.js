@@ -29,6 +29,10 @@ const received = [];
 let blockCors = false;
 let oldPost = false;                // імітація розгортання без getConfig у doPost
 let fired = {};                     // emp_id → звільнений посеред сесії
+// Поведінка «мережі» на відправці звіту — для тестів перерв (e2e3.js):
+//   slow — відповідати із затримкою, мс; http500 — падати помилкою сервера;
+//   drop — рвати з'єднання, не прийнявши звіт; lost — прийняти, але відповідь не довезти
+let mode = { slow: 0, http500: false, drop: false, lost: false };
 
 const tokenFor = (p, dev) => 'T.' + p.id + '.' + (dev || '');
 const bySession = (token, dev) => {
@@ -65,8 +69,13 @@ const srv = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/html' });
     return res.end('<html>Sign in with Google</html>');
   }
+  if (req.method === 'GET' && req.url.startsWith('/mode')) {
+    const q = new URL(req.url, 'http://x').searchParams;
+    mode = { slow: Number(q.get('slow')) || 0, http500: q.has('http500'), drop: q.has('drop'), lost: q.has('lost') };
+    res.writeHead(200, cors); return res.end(JSON.stringify(mode));
+  }
   if (req.method === 'GET' && req.url.startsWith('/reset')) {
-    received.length = 0; fired = {};
+    received.length = 0; fired = {}; mode = { slow: 0, http500: false, drop: false, lost: false };
     res.writeHead(200, cors); return res.end('ok');
   }
   if (req.method === 'GET' && req.url.startsWith('/fire/')) {
@@ -127,6 +136,8 @@ const srv = http.createServer((req, res) => {
                : json({ ok: false, error: 'AUTH', message: 'Сесію завершено. Увійдіть за PIN.' });
     }
     if (act === 'submit') {
+      if (mode.http500) { res.writeHead(500, cors); return res.end('Internal error'); }
+      if (mode.drop) return req.socket.destroy();            // звіт не дійшов
       const u = bySession(p.token, p.deviceId);
       if (!u) return json({ ok: false, error: 'AUTH', message: 'Сесію завершено. Увійдіть за PIN.' });
       const need = p.role === 'Майстер' ? 'master' : 'mech';
@@ -134,8 +145,12 @@ const srv = http.createServer((req, res) => {
         message: 'Ваша роль не дає права здавати цей чек-лист' });
       // _author — це те, що визначив «сервер»; _clientAuthor фіксує, чи клієнт
       // узагалі надсилав щось про автора (не має надсилати)
-      received.push(Object.assign({}, p, { _author: u.name, _clientAuthor: p._author || null }));
-      return json({ ok: true, report_id: p.report_id, counts: { ok: p.items.length }, warnings: [] });
+      const accept = () => {
+        received.push(Object.assign({}, p, { _author: u.name, _clientAuthor: p._author || null }));
+        if (mode.lost) return req.socket.destroy();          // прийняли, а відповідь загубилась
+        json({ ok: true, report_id: p.report_id, counts: { ok: p.items.length }, warnings: [] });
+      };
+      return mode.slow ? void setTimeout(accept, mode.slow) : accept();
     }
     json({ ok: false, error: 'unknown action: ' + act });
   });
