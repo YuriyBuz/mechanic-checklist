@@ -11,7 +11,7 @@
    Кожна перевірка каже, що МАЄ бути; ❌ означає, що механік втрачає дані. */
 const { chromium } = require('playwright');
 const BASE = 'http://127.0.0.1:8731';
-const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXE = process.env.CHROME || '/opt/pw-browsers/chromium';  // браузер пісочниці
 let fails = 0;
 const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails++; };
 const sleep = ms => new Promise(r => setTimeout(r, ms));

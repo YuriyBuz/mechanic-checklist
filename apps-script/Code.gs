@@ -21,7 +21,7 @@
 
 // Версія бекенду. Її віддає ?action=ping і вона лягає в кожен звіт —
 // саме за нею видно, чи розгортання справді підхопило новий код.
-var APP_VERSION = 'checklist-2026-10-25-v4.2';
+var APP_VERSION = 'checklist-2026-10-27-v4.3';
 
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) || 'getConfig';
@@ -56,6 +56,12 @@ function doPost(e) {
     if (action === 'getConfig') {
       var who = payload.token ? verifySession_(payload.token, payload.deviceId) : null;
       return jsonOut({ ok: true, config: buildClientConfig_(payload.role, who) });
+    }
+    if (action === 'attendance') {
+      var mw = verifySession_(payload.token, payload.deviceId);
+      if (!mw) return jsonOut({ ok: false, error: 'AUTH', message: 'Сесію завершено. Увійдіть за PIN.' });
+      if (!can_(mw, 'submitMaster')) return jsonOut({ ok: false, error: 'FORBIDDEN', message: 'Список відсутніх — лише для майстра зміни' });
+      return jsonOut(attendanceToday_());
     }
     if (action !== 'submit') return jsonOut({ ok: false, error: 'unknown action: ' + action });
   } catch (err) {
@@ -576,3 +582,69 @@ function lastHandover_() {
     return null;
   }
 }
+
+
+/* ─────────── хто не на зміні — для пункту 3 чек-листа майстра ───────────
+   Джерело — вкладка «🌟 СЬОГОДНІ» таблиці реєстрації приходу (планшет на вході).
+   Віддаємо три списки:
+     absent      — «ВІДСУТНІ НА ЗМІНІ» без поважної причини (не зареєструвались);
+     offSchedule — зареєструвались, але «Тип виходу» = «Поза графіком»;
+     legal       — відпустка / лікарняний: показуємо, але тривогу не здіймаємо.
+   ID таблиці можна змінити властивістю ATTENDANCE_SHEET_ID. */
+var ATTENDANCE_SHEET_ID_DEFAULT = '19l7RqZ0AbA4tZRikROYLP0vw_j96xPpOfOKmqidIGAs';
+var ATTENDANCE_TAB = '🌟 СЬОГОДНІ';
+
+function attendanceToday_() {
+  var cache = CacheService.getScriptCache();
+  var hit = cache.get('attendance_v1');
+  if (hit) return JSON.parse(hit);
+  var id = PropertiesService.getScriptProperties().getProperty('ATTENDANCE_SHEET_ID') || ATTENDANCE_SHEET_ID_DEFAULT;
+  var sh = SpreadsheetApp.openById(id).getSheetByName(ATTENDANCE_TAB);
+  if (!sh) return { ok: false, error: 'NO_TAB', message: 'У таблиці реєстрації немає вкладки «' + ATTENDANCE_TAB + '»' };
+  var res = parseAttendance_(sh.getDataRange().getDisplayValues(), businessDate());
+  cache.put('attendance_v1', JSON.stringify(res), 120);   // планшет питає часто — таблицю читаємо не частіше двох хвилин
+  return res;
+}
+
+/** Розбір вкладки за назвами, а не за номерами рядків: список щодня різної довжини. */
+function parseAttendance_(v, today) {
+  var out = { ok: true, report_at: '', report_date: '', fresh: false, present: 0,
+              absent: [], offSchedule: [], legal: [] };
+  var head = -1, col = {};
+  for (var i = 0; i < v.length; i++) {
+    var line = v[i].join(' ');
+    var m = line.match(/ЗВІТ НА:\s*(\d{2})\.(\d{2})\.(\d{4})\s*(\d{1,2}:\d{2})?/);
+    if (m && !out.report_date) {
+      out.report_date = m[3] + '-' + m[2] + '-' + m[1];
+      out.report_at = m[1] + '.' + m[2] + '.' + m[3] + (m[4] ? ' ' + m[4] : '');
+    }
+    if (head < 0 && v[i].some(function (c) { return String(c).trim() === 'ПІБ'; })) {
+      head = i;
+      v[i].forEach(function (c, k) { col[String(c).trim()] = k; });
+    }
+  }
+  out.fresh = out.report_date === today;
+  if (head < 0) return out;
+  var cName = col['ПІБ'], cPos = col['Посада'], cSt = col['Статус'], cStart = col['Початок'],
+      cType = col['Тип виходу'];
+  var section = 'present';
+  for (var r = head + 1; r < v.length; r++) {
+    var row = v[r], name = String(row[cName] || '').trim();
+    if (/ВІДСУТНІ НА ЗМІНІ/i.test(row.join(' '))) { section = 'absent'; continue; }
+    if (!name || name === 'ПІБ') continue;
+    var who = { name: name, position: String(row[cPos] || '').trim(), status: String(row[cSt] || '').trim() };
+    if (section === 'present') {
+      out.present++;
+      if (/поза\s*графік/i.test(String(row[cType] || ''))) {
+        who.start = String(row[cStart] || '').trim();
+        out.offSchedule.push(who);
+      }
+    } else if (/легально|відпуст|лікарн/i.test(who.status)) {
+      out.legal.push(who);
+    } else {
+      out.absent.push(who);
+    }
+  }
+  return out;
+}
+

@@ -1,7 +1,7 @@
 /* Клієнт у браузері: вхід, ролі, типи пунктів, склад payload. */
 const { chromium } = require('playwright');
 const BASE = 'http://127.0.0.1:8731';
-const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXE = process.env.CHROME || '/opt/pw-browsers/chromium';  // браузер пісочниці
 const JPEG = Buffer.from(
   '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwc' +
   'KDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAA' +
