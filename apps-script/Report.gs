@@ -376,7 +376,8 @@ var OVERDUE_DEFAULTS = [
   ['Майстер', 'Кінець зміни', 'DEADLINE_MASTER_END', '21:00']
 ];
 function checkOverdue(now) {
-  now = now || new Date();
+  // тригер передає сюди об'єкт події, а не дату — тоді беремо поточний час
+  now = (now instanceof Date) ? now : new Date();
   var day = businessDate(now), hm = Utilities.formatDate(now, TZ, 'HH:mm');
   var props = PropertiesService.getScriptProperties();
   var sentKey = 'OVERDUE_SENT_' + day;

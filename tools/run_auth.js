@@ -630,6 +630,8 @@ appendRows('11_Звіти', [['OD-M', '', '2031-05-12', 'Кінець зміни
 const od2 = checkOverdue(OD('21:10'));
 t('о 21:10 — лише майстер: вечірній механіка вже здано', /Майстер · Кінець зміни/.test(od2) && !/Механік/.test(od2) && store.mail.length === 1);
 t('  подію overdue записано', readTable('14_Журнал_подій').rows.filter(r => r[2] === 'overdue').length === 3);
+t('виклик тригером (об\'єкт події замість дати) не падає', (() => {
+  try { return typeof checkOverdue({ authMode: 'FULL', triggerUid: '1', minute: 30 }) === 'string'; } catch (e) { return false; } })());
 store.props['DEADLINE_MECH_START'] = '07:00';
 t('дедлайн змінюється властивістю скрипта', /Механік · Початок зміни/.test(checkOverdue(new Date('2031-05-13T07:30:00+03:00'))));
 delete store.props['DEADLINE_MECH_START'];
