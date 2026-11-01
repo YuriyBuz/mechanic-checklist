@@ -21,7 +21,7 @@
 
 // Версія бекенду. Її віддає ?action=ping і вона лягає в кожен звіт —
 // саме за нею видно, чи розгортання справді підхопило новий код.
-var APP_VERSION = 'checklist-2026-10-27-v4.3';
+var APP_VERSION = 'checklist-2026-11-01-v4.4';
 
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) || 'getConfig';
@@ -56,6 +56,12 @@ function doPost(e) {
     if (action === 'getConfig') {
       var who = payload.token ? verifySession_(payload.token, payload.deviceId) : null;
       return jsonOut({ ok: true, config: buildClientConfig_(payload.role, who) });
+    }
+    if (action === 'getSchedule') {
+      var sw = verifySession_(payload.token, payload.deviceId);
+      if (!sw) return jsonOut({ ok: false, error: 'AUTH', message: 'Сесію завершено. Увійдіть за PIN.' });
+      if (!can_(sw, 'submitMaster')) return jsonOut({ ok: false, error: 'FORBIDDEN', message: 'Графік — лише для майстра зміни' });
+      return jsonOut(scheduleMonth_(payload.monthYear));
     }
     if (action === 'attendance') {
       var mw = verifySession_(payload.token, payload.deviceId);
@@ -646,5 +652,64 @@ function parseAttendance_(v, today) {
     }
   }
   return out;
+}
+
+
+/* ─────────── графік роботи — лише перегляд, для порталу майстра ───────────
+   Джерело — таблиця графіка (той самий файл, з якого «Повний графік» адмінпорталу):
+   вкладка на місяць «Листопад 2026», рядок 4 — День/Ніч, далі по дві колонки на день,
+   порожній рядок відділяє групу посад. Нічого не пише. ID — властивість
+   SCHEDULE_SHEET_ID, типово «Жовтень графік». */
+var SCHEDULE_SHEET_ID_DEFAULT = '1uL5lkZGPk8klJku5dX-eh075aZhFSUTeyIdDHLAQuKg';
+var UA_MONTHS = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень',
+                 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
+
+function scheduleMonth_(monthYear) {
+  var now = new Date();
+  var month = String(monthYear || '').trim() ||
+    UA_MONTHS[Number(Utilities.formatDate(now, TZ, 'M')) - 1] + ' ' + Utilities.formatDate(now, TZ, 'yyyy');
+  var cache = CacheService.getScriptCache(), key = 'sched_v1_' + month;
+  var hit = cache.get(key);
+  if (hit) return JSON.parse(hit);
+  var id = PropertiesService.getScriptProperties().getProperty('SCHEDULE_SHEET_ID') || SCHEDULE_SHEET_ID_DEFAULT;
+  var book = SpreadsheetApp.openById(id);
+  var months = book.getSheets().map(function (s) { return s.getName(); })
+    .filter(function (n) { return /^\S+ \d{4}$/.test(n) && UA_MONTHS.indexOf(n.split(' ')[0]) > -1; })
+    .sort(function (a, b) {
+      var ka = Number(a.split(' ')[1]) * 12 + UA_MONTHS.indexOf(a.split(' ')[0]);
+      var kb = Number(b.split(' ')[1]) * 12 + UA_MONTHS.indexOf(b.split(' ')[0]);
+      return ka - kb;
+    });
+  var sh = book.getSheetByName(month);
+  if (!sh) return { ok: false, error: 'NO_MONTH', message: 'Графіка за «' + month + '» немає', months: months, month: month };
+  var res = parseScheduleSheet_(sh.getDataRange().getDisplayValues(), month);
+  res.months = months;
+  cache.put(key, JSON.stringify(res), 300);
+  return res;
+}
+
+function parseScheduleSheet_(v, month) {
+  var mi = UA_MONTHS.indexOf(String(month).split(' ')[0]);
+  var yr = Number(String(month).split(' ')[1]);
+  var days = new Date(yr, mi + 1, 0).getDate();
+  // рядок із «День»/«Ніч» — від нього рахуємо колонки днів
+  var hdr = -1, first = 2;
+  for (var i = 0; i < Math.min(v.length, 10); i++) {
+    var k = v[i].indexOf('День');
+    if (k > -1) { hdr = i; first = k; break; }
+  }
+  var rows = [], group = 0;
+  for (var r = hdr + 1; r < v.length; r++) {
+    var name = String(v[r][0] || '').trim();
+    if (!name) { if (rows.length && rows[rows.length - 1].group === group) group++; continue; }
+    var sched = [];
+    for (var d = 1; d <= days; d++) {
+      var dv = String(v[r][first + (d - 1) * 2] || '').trim();
+      var nv = String(v[r][first + (d - 1) * 2 + 1] || '').trim();
+      if (dv || nv) sched.push({ day: d, dVal: dv, nVal: nv });
+    }
+    rows.push({ name: name, position: String(v[r][1] || '').trim(), group: group, schedule: sched });
+  }
+  return { ok: true, month: month, days: days, rows: rows };
 }
 

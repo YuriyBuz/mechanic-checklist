@@ -661,5 +661,28 @@ t('майстер/адмін отримує список через doPost', aAd
 t('механіку — відмова', attPost(sab).error === 'FORBIDDEN');
 t('без входу — AUTH', JSON.parse(doPost({ postData: { contents: JSON.stringify({ action: 'attendance' }) } })).error === 'AUTH');
 
+console.log('\n── графік роботи для порталу майстра ──');
+// справжня будова вкладки «Листопад 2026» таблиці графіка
+const SCH = [['Листопад 2026'], ['', '', '46327', '', '46328'], ['', '', 'Неділя', '', 'Понеділок'],
+  ['', '', 'День', 'Ніч', 'День', 'Ніч', 'День', 'Ніч'],
+  ['Сосновський Валерій Петрович', 'Оператор котельні', '', '', '1', '2', '1', '2'],
+  ['Рашидов Талех Ядулла огли', 'Оператор котельні', '1', '2', '', '', '', ''],
+  ['', ''],
+  ['Гора Андрій Олександрович', 'механік зміни', '1', '', '1', '', '', ''],
+  ['Садиріна Ольга Анатоліївна', 'варник соуса', '1', '', '1', '', 'В', '']];
+const sch = parseScheduleSheet_(SCH, 'Листопад 2026');
+t('розбір вкладки місяця: 30 днів, 4 людини, 2 групи', sch.ok && sch.days === 30 && sch.rows.length === 4 &&
+  sch.rows[2].group === 1 && sch.rows[0].group === 0);
+t('  день/ніч на своїх місцях: Рашидов 1-го — 1 / 2 (н)', JSON.stringify(sch.rows[1].schedule[0]) === '{"day":1,"dVal":"1","nVal":"2"}');
+t('  відпустка «В» збережена', sch.rows[3].schedule.some(x => x.day === 3 && x.dVal === 'В'));
+store.books[SCHEDULE_SHEET_ID_DEFAULT] = new SS('graf', [new Sheet('Жовтень 2026', SCH), new Sheet('Листопад 2026', SCH), new Sheet('Лист5', [['x']])]);
+const schPost = (tok, dev, m) => JSON.parse(doPost({ postData: { contents: JSON.stringify({ action: 'getSchedule', token: tok, deviceId: dev, monthYear: m }) } }));
+const sAdm = schPost(adm.token, 'dev5', 'Листопад 2026');
+t('майстер/адмін отримує графік і список місяців (без службових вкладок)', sAdm.ok && sAdm.rows.length === 4 &&
+  sAdm.months.join() === 'Жовтень 2026,Листопад 2026');
+t('немає такого місяця — зрозуміла відповідь', schPost(adm.token, 'dev5', 'Січень 2030').error === 'NO_MONTH');
+t('механіку — відмова', schPost(sab.token, 'dev3', 'Листопад 2026').error === 'FORBIDDEN');
+t('без входу — AUTH', schPost('', '', 'Листопад 2026').error === 'AUTH');
+
 console.log('\n' + (fails ? '❌ ПОМИЛОК: ' + fails : '✅ Усі перевірки пройдено'));
 process.exit(fails ? 1 : 0);
